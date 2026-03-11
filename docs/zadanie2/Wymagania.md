@@ -63,8 +63,6 @@ Z uwagi na wąską grupę docelową (jeden poziom egzaminu, jedna uczelnia), sys
 
 ## Wymagania funkcjonalne
 
-Wymagania funkcjonalne zostały opracowane w formie testowalnych historyjek użytkownika (User Stories) i przypisano im priorytety zgodnie z metodą MoSCoW (Must, Should, Could, Won't).
-
 #### I. Rejestracja i Zarządzanie Kontem
 | ID | Historyjka Użytkownika | Priorytet | Kryterium Akceptacji (Test) |
 | :--- | :--- | :--- | :--- |
