@@ -33,8 +33,6 @@
 
 ## Wymagania systemowe
 
-Niniejsza sekcja opisuje specyfikację techniczną systemu **ExtLearnerUJ** dostosowaną do obsługi konkretnego poziomu egzaminu eksternistycznego na Uniwersytecie Jagiellońskim.
-
 #### I. Dane ilościowe i prognozowane obciążenie
 Z uwagi na wąską grupę docelową (jeden poziom egzaminu, jedna uczelnia), system charakteryzuje się niskim, ale bardzo skoncentrowanym w czasie obciążeniem.
 
@@ -105,8 +103,6 @@ Wymagania funkcjonalne zostały opracowane w formie testowalnych historyjek uży
 ---
 
 ## Wymagania niefunkcjonalne
-
-Wymagania niefunkcjonalne określają atrybuty jakościowe systemu **ExtLearnerUJ**, definiując jak system ma pracować, aby zapewnić bezpieczeństwo, wydajność i komfort użytkowania.
 
 | ID | Kategoria | Opis wymagania | Kryterium Akceptacji (Testowalność) |
 | :--- | :--- | :--- | :--- |
