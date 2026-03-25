@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Materiału
@@ -19,3 +20,4 @@ sequenceDiagram
         S-->>UI: Potwierdzenie wykonania operacji
         UI-->>U: Wyświetla potwierdzenie (zmiana ikony)
     end
+```

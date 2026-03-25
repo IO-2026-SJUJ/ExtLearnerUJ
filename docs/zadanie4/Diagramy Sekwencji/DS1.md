@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Rejestracji
@@ -42,3 +43,4 @@ sequenceDiagram
         S-->>UI: Komunikat o błędzie
         UI-->>U: Link wygasł lub jest nieprawidłowy
     end
+```

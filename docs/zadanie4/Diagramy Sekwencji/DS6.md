@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Rekomendacji
@@ -30,3 +31,4 @@ sequenceDiagram
         S-->>UI: Wyświetla szczegóły materiału
         UI-->>U: Prezentuje wybrany materiał
     end
+```

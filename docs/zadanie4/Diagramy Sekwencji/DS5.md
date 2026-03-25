@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     participant S as System
     participant AS as Serwis Oceniania
@@ -24,3 +25,4 @@ sequenceDiagram
     RS-->>AS: Potwierdzenie odbioru danych
 
     AS-->>S: Zwraca kompletny wynik oceny
+```

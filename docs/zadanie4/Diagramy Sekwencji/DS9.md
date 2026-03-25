@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Materiału
@@ -16,3 +17,4 @@ sequenceDiagram
     UI-->>U: Wyświetla priorytet materiału
 
     U->>U: Decyduje czy kontynuować korzystanie z materiału
+```

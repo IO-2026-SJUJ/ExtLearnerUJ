@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant E as Klient Email
@@ -28,3 +29,4 @@ sequenceDiagram
         S-->>UI: Komunikat o nieprawidłowym tokenie
         UI-->>U: Wyświetla błąd - nieprawidłowy link
     end
+```

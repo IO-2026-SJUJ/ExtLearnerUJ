@@ -1,3 +1,4 @@
+```mermaid
 classDiagram
     class User {
         -Int id
@@ -315,3 +316,4 @@ classDiagram
     }
     MaterialVerification "1" -- "0..*" Comment : has_comments
     WorkReview "1" -- "0..*" Comment : has_comments 
+```

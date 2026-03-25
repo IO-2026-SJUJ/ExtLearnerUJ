@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Logowania
@@ -39,3 +40,4 @@ sequenceDiagram
         S-->>UI: Przekierowanie do panelu głównego
         UI-->>U: Wyświetla panel główny
     end
+```

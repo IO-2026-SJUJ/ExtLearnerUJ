@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Materiałów
@@ -60,3 +61,4 @@ sequenceDiagram
             end
         end
     end
+```

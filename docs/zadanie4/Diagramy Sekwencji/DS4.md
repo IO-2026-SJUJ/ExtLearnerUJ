@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     actor U as Użytkownik
     participant UI as Interfejs Testu
@@ -38,3 +39,4 @@ sequenceDiagram
     DB-->>S: Potwierdzenie zapisu
     S-->>UI: Prezentuje wyniki diagnozy
     UI-->>U: Wyświetla wyniki w podziale na obszary
+```
