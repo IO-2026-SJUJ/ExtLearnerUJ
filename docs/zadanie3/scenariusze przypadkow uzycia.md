@@ -9,6 +9,7 @@
   1. Użytkownik wybiera opcję rejestracji.
   2. Wprowadza dane wymagane do utworzenia konta.
   3. System sprawdza poprawność danych.
+     -> *Jeśli dane są niepoprawne:* System wyświetla komunikat o błędzie i wraca do kroku 2.
   4. System tworzy konto i wysyła wiadomość aktywacyjną.
   5. Użytkownik potwierdza adres e-mail w UC02.
   6. System aktywuje konto.
@@ -23,6 +24,7 @@
   1. Użytkownik otwiera wiadomość e-mail z linkiem aktywacyjnym.
   2. Kliknięcie linku przekierowuje do systemu.
   3. System weryfikuje ważność tokenu.
+     -> *Jeśli token jest nieważny lub wygasły:* System wyświetla komunikat o błędzie i kończy scenariusz niepowodzeniem.
   4. System aktywuje konto użytkownika.
   5. Użytkownik otrzymuje potwierdzenie aktywacji.
 - **Powiązania:** `<<include>>` w UC01
@@ -36,6 +38,7 @@
   1. Użytkownik wybiera opcję logowania.
   2. Podaje login/e-mail oraz hasło.
   3. System weryfikuje dane logowania.
+     -> *Jeśli dane są niepoprawne:* System wyświetla komunikat o błędzie i wraca do kroku 2.
   4. System tworzy sesję użytkownika.
   5. Użytkownik trafia do panelu głównego.
 
@@ -89,7 +92,8 @@
   3. Użytkownik wybiera konkretny materiał.
   4. System wyświetla szczegóły materiału.
   5. Użytkownik może skorzystać z funkcji dodatkowych: ulubione, znacznik weryfikacji, głosowanie.
-- **Powiązania:** `UC08 <<extend>> UC07`, `UC09 <<extend>> UC07`, `UC10 <<extend>> UC07`
+     -> *Jeśli użytkownik nie jest zalogowany (alternatywna ścieżka do UC03):* -> UC03
+- **Powiązania:** `UC07 <<include>> UC08`, `UC07 <<include>> UC09`, `UC07 <<include>> UC10`
 
 ## UC08 – Dodawanie materiału do ulubionych
 
@@ -122,6 +126,7 @@
 - **Scenariusz (główny przepływ):**
   1. Użytkownik wybiera opcję głosowania.
   2. System sprawdza, czy użytkownik może głosować.
+     -> *Jeśli użytkownik nie ma prawa głosu:* System wyświetla komunikat i kończy scenariusz niepowodzeniem.
   3. System zapisuje głos.
   4. System zwiększa priorytet materiału.
   5. Użytkownik widzi potwierdzenie akcji.
@@ -175,6 +180,7 @@
   2. System prezentuje postęp nauki, wyniki testów i aktywność.
   3. Użytkownik analizuje swoje dane.
   4. Użytkownik może pobrać raport w UC15.
+     -> *Jeśli użytkownik nie jest zalogowany (alternatywna ścieżka do UC03):* -> UC03
 - **Powiązania:** `UC15 <<extend>> UC14`
 
 ## UC15 – Pobranie raportu z całego okresu nauki
@@ -198,6 +204,7 @@
   1. Użytkownik wybiera opcję dodania materiału.
   2. Wypełnia dane materiału.
   3. Dodaje pliki w UC18.
+     -> *Jeśli pliki nie zostaną dodane (alternatywna ścieżka):* System zapisuje materiał bez plików i kończy scenariusz.
   4. Opcjonalnie tworzy testy/ćwiczenia w UC17.
   5. System zapisuje materiał.
 - **Powiązania:** `UC16 <<include>> UC18`, `UC17 <<extend>> UC16`
@@ -216,12 +223,13 @@
 
 ## UC18 – Załączanie plików
 
-- **Aktor:** Podstawowy użytkownik
+- **Aktor:** Podstawowy użytkownik / Kandydat na Moderatora
 - **Warunki początkowe:** Użytkownik dodaje materiał lub przesyła pracę.
 - **Warunki końcowe:** Pliki zostają dołączone do przesyłki.
 - **Scenariusz (główny przepływ):**
   1. Użytkownik wybiera pliki z urządzenia.
   2. System sprawdza ich typ i rozmiar.
+     -> *Jeśli plik ma nieobsługiwany typ lub przekracza rozmiar:* System wyświetla komunikat o błędzie i nie dołącza pliku.
   3. System przesyła pliki.
   4. System przypisuje je do materiału lub pracy.
 - **Powiązania:** `<<include>>` w UC16 i UC29
@@ -235,6 +243,7 @@
   1. Użytkownik wybiera opcję przesłania pracy.
   2. System proponuje wybór pakietu w UC20.
   3. Użytkownik opłaca usługę w UC21.
+     -> *Jeśli płatność nie zostanie zrealizowana:* System wyświetla komunikat o niepowodzeniu i kończy scenariusz.
   4. Użytkownik dodaje pracę i wysyła ją do sprawdzenia.
   5. System rejestruje zgłoszenie.
 - **Powiązania:** `UC19 <<include>> UC20`, `UC19 <<include>> UC21`, `UC22 <<extend>> UC19`
@@ -285,6 +294,7 @@
   2. System wyświetla wynik, komentarze i zaznaczone błędy.
   3. Użytkownik analizuje feedback.
   4. Użytkownik może ocenić moderatora w UC24.
+     -> *Jeśli użytkownik nie chce oceniać moderatora:* System kończy scenariusz.
 - **Powiązania:** `UC24 <<extend>> UC23`
 
 ## UC24 – Ocena moderatora
@@ -347,6 +357,7 @@
   3. Kandydat uzupełnia formularz i wykonuje wymagany test.
   4. Kandydat wysyła zgłoszenie.
   5. System zapisuje wniosek do rozpatrzenia.
+     -> *Jeśli test nie zostanie zdany:* System wyświetla komunikat o niepowodzeniu i nie wysyła zgłoszenia (kończy scenariusz).
 - **Powiązania:** `UC28 <<include>> UC29`, `UC28 <<include>> UC30`
 
 ## UC29 – Wypełnienie formularza i załączenie plików
@@ -358,6 +369,7 @@
   1. Kandydat wpisuje dane osobowe i uzasadnienie aplikacji.
   2. Dodaje wymagane pliki.
   3. System waliduje kompletność danych.
+     -> *Jeśli dane są niekompletne:* System wyświetla komunikat o błędzie i wraca do kroku 1.
   4. System zapisuje formularz.
 - **Powiązania:** `<<include>>` w UC28
 
@@ -385,8 +397,10 @@
   1. Moderator otwiera zgłoszony materiał.
   2. Analizuje treść, jakość i zgodność z zasadami.
   3. W razie potrzeby korzysta z UC34 i UC35.
+     -> *Jeśli podczas analizy wykryte zostaną poważne błędy:* -> UC34
   4. Moderator podejmuje decyzję w UC33.
   5. System wykonuje powiadomienie autora w UC32.
+     -> *Jeśli decyzja to odrzucenie lub wysłanie do poprawy:* -> UC35
 - **Powiązania:** `UC31 <<include>> UC32`, `UC31 <<include>> UC33`, `UC34 <<extend>> UC31`, `UC35 <<extend>> UC31`
 
 ## UC32 – Powiadomienie autora o zakończonej weryfikacji jego materiału
@@ -410,7 +424,6 @@
   2. System zapisuje status materiału.
   3. W razie potrzeby materiał trafia do poprawy.
   4. Przy akceptacji materiał przechodzi do publikacji.
-- **Powiązania:** `<<include>>` w UC31
 
 ## UC34 – Wystawienie komentarza do materiału
 
@@ -465,6 +478,7 @@
   1. Moderator otwiera kolejkę prac.
   2. System wyświetla dostępne prace.
   3. Moderator wybiera konkretną pracę do rezerwacji lub sprawdzenia.
+     -> *Jeśli pracę już rezerwuje inny moderator:* System wyświetla komunikat i wraca do kroku 2.
 - **Powiązania:** `UC39 <<extend>> UC38`
 
 ## UC39 – Rezerwacja pracy do sprawdzenia
@@ -479,7 +493,7 @@
   4. Inni moderatorzy nie mogą jej już zarezerwować.
 - **Powiązania:** `<<extend>>` w UC38
 
-## UC40 – Sprawdzenie pracy
+## UC40 – Sprawdzanie pracy
 
 - **Aktor:** Moderator
 - **Warunki początkowe:** Praca została zarezerwowana przez moderatora.
@@ -535,7 +549,7 @@
   1. Administrator otwiera listę wniosków.
   2. Analizuje dane kandydata i wynik testu.
   3. Podejmuje decyzję o przyjęciu lub odrzuceniu.
-  4. Jeśli kandydat zostaje zaakceptowany, uruchamia się UC45.
+     -> *Jeśli administrator postanawia zaakceptować kandydata:* -> UC45
 - **Powiązania:** `UC45 <<extend>> UC44`
 
 ## UC45 – Powiadomienie o zakwalifikowaniu
@@ -558,7 +572,7 @@
   1. Administrator otwiera panel zgłoszeń.
   2. System wyświetla listę zgłoszeń.
   3. Administrator wybiera zgłoszenie do rozpatrzenia.
-  4. System przechodzi do UC47.
+     -> *Jeśli zgłoszenie wymaga dodatkowych danych:* -> UC47
 - **Powiązania:** `UC47 <<extend>> UC46`
 
 ## UC47 – Rozpatrywanie zgłoszeń
@@ -582,5 +596,6 @@
   1. Administrator wyszukuje konto użytkownika.
   2. Otwiera kartę konta.
   3. Zmienia status konta lub poziom uprawnień.
+     -> *Jeśli zmiana statusu na „zablokowane”:* System automatycznie odmawia dostępu do funkcji systemu.
   4. Zapisuje zmiany.
   5. System aktualizuje dostęp użytkownika.
