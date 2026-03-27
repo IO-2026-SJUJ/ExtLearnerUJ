@@ -245,7 +245,7 @@ classDiagram
         +process() boolean
     }
     Work "1" -- "1" PaymentTransaction : has_payment
-    Student ..> PaymentTransaction : initiates_payment
+    Student -- PaymentTransaction : initiates_payment
 
     class WorkReview {
         -String id
