@@ -1,5 +1,6 @@
 from django.db import models
 from datetime import datetime
+from django.contrib.auth.hashers import make_password, check_password
 
 class User(models.Model):
     email = models.CharField(max_length=255)
@@ -10,7 +11,19 @@ class User(models.Model):
     registrationDate = models.DateTimeField(auto_now_add=True)
 
     def register(self, email, password, name):
-        return False  # RED
+        hashed_password = make_password(password)
+    
+        if User.objects.filter(email=email).exists():
+            return False
+
+        User.objects.create(
+        email=email, 
+        password=hashed_password, 
+        name=name,
+        status="ACTIVE"
+        )
+        
+        return User.objects.filter(email=email).exists()
 
     def verifyEmail(self, id):
         return False  # RED
