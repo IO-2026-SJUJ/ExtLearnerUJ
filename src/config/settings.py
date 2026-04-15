@@ -73,6 +73,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+EMAIL_HOST = 'test@extlearner.uj.edu.pl'
+
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'

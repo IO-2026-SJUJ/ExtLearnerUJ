@@ -1,6 +1,12 @@
 from django.db import models
-from datetime import datetime
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth.hashers import make_password, check_password
+from django.urls import path
+from django.core.mail import send_mail
+from django.conf import settings
+import random
+from . import views # upewnij się, że masz plik views.py
 
 class User(models.Model):
     email = models.CharField(max_length=255)
@@ -16,17 +22,40 @@ class User(models.Model):
         if User.objects.filter(email=email).exists():
             return False
 
-        User.objects.create(
+        user = User.objects.create(
         email=email, 
         password=hashed_password, 
         name=name,
         status="ACTIVE"
         )
+
+        token = EmailVerificationToken.objects.create(userId=user.email).token
+        self.send_verification_email(user.email, token)
         
         return User.objects.filter(email=email).exists()
 
+    def send_verification_email(self, email, token_code):
+        subject = 'Twój kod weryfikacyjny - ExtLearnerUJ'
+
+        message = f'Witaj {email}!\n\nTwój kod do weryfikacji konta to: {token_code}\n\nKod jest ważny przez 24 \\h.'
+    
+        send_mail(
+            subject, 
+            message, 
+            settings.EMAIL_HOST, 
+            [email]
+        )
+
     def verifyEmail(self, id):
-        return False  # RED
+        try:
+            token = EmailVerificationToken.objects.get(userId=self.email, token=id)
+            self.emailVerified = True
+            self.save()
+            token.delete()
+            return True
+        
+        except EmailVerificationToken.DoesNotExist:
+            return False
 
     def login(self, email, password):
         return None  # RED
@@ -138,11 +167,13 @@ class Session(models.Model):
 
 class EmailVerificationToken(models.Model):
     userId = models.CharField(max_length=255)
-    token = models.CharField(max_length=255)
-    expiresAt = models.DateTimeField(null=True)
+    token = models.CharField(default=random.randint(100000, 999999))
+    expiresAt = models.DateTimeField(default=timezone.now() + timedelta(days=1))
 
     def verify(self):
-        return False  # RED
+        if self.expiresAt and timezone.now() > self.expiresAt:
+            return False
+        return True 
 
 
 class Material(models.Model):
