@@ -1,23 +1,23 @@
 from django.test import TestCase
+from django.core import mail
 from unittest.mock import patch, MagicMock
 from ExtLearnerUJ.models import User, Student, Moderator, Admin
+import re
 
 class TestUserModel(TestCase):
     def setUp(self):
         self.user = User(id=1, email="test@example.com", name="Test User", status="ACTIVE")
 
-    @patch('ExtLearnerUJ.models.User.save')
-    def test_register(self, mock_save):
+    def test_register(self):
         result = self.user.register("new@example.com", "password123", "New User")
         self.assertTrue(result)
-        mock_save.assert_called_once()
 
-    @patch('ExtLearnerUJ.models.EmailVerificationToken.verify')
-    def test_verifyEmail(self, mock_verify):
-        mock_verify.return_value = True
-        result = self.user.verifyEmail(1)
-        self.assertTrue(result)
-        self.assertTrue(self.user.emailVerified)
+    def test_verifyEmail(self):
+        self.user.register("student@uj.edu.pl", "password123", "New User")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["student@uj.edu.pl"])
+        token = re.search(r'\d{6}', mail.outbox[0].body).group()
+        self.assertTrue(User.objects.get(email="student@uj.edu.pl").verifyEmail(token))
 
     @patch('ExtLearnerUJ.models.Session.create')
     def test_login(self, mock_session_create):
