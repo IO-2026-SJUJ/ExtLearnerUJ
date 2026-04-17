@@ -1,13 +1,72 @@
-from django.test import TestCase
+import shutil
+import tempfile
+from django.test import TestCase, override_settings
+from django.conf import settings
 from unittest.mock import patch
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import default_storage
+from ExtLearnerUJ.models import Material, FileAttachment
 
+MEDIA_ROOT = tempfile.mkdtemp()
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class TestMaterialsAndGrading(TestCase):
 
-    @patch('ExtLearnerUJ.models.Material.save')
-    def test_material_create(self, mock_save):
-        from ExtLearnerUJ.models import Material
-        f1 = Material.create({"title": "Family"}, ["file1.pdf"])
-        self.assertEqual(f1.title, "Family")
+    def setUp(self):
+        self.valid_data = {
+            'title': 'Wzorce Projektowe',
+            'content': 'Opis wzorca Fabryka i Singleton.',
+            'authorId': 'student123@uj.edu.pl'
+        }
+        self.fake_file_content = b"To jest testowa zawartosc pliku."
+        self.fake_file = SimpleUploadedFile(
+            "notatki.pdf", 
+            self.fake_file_content, 
+            content_type="application/pdf"
+        )
+
+    def test_fileAttachment_upload(self):
+        """Sprawdza, czy plik jest poprawnie zapisywany na dysku i w bazie."""
+        attachment = FileAttachment()
+        
+        result = attachment.upload(self.fake_file)
+        
+        self.assertTrue(result, "Upload powinien zwrocic True")
+        self.assertEqual(attachment.fileName, "notatki.pdf")
+        self.assertGreater(attachment.sizeBytes, 0)
+        self.assertTrue(default_storage.exists(attachment.filePath), "Plik powinien istniec w storage")
+        
+        if default_storage.exists(attachment.filePath):
+            default_storage.delete(attachment.filePath)
+
+    def test_material_addFile(self):
+        material = Material.objects.create(title="Test Material", authorId="admin")
+        attachment = FileAttachment.objects.create(
+            fileName="doc.txt", 
+            filePath="path/doc.txt"
+        )
+        
+        result = material.addFile(attachment)
+        
+        self.assertTrue(result)
+        attachment.refresh_from_db()
+        self.assertEqual(attachment.material, material, "Zalacznik powinien miec przypisany material")
+        self.assertIn(attachment, material.attachments.all(), "Material powinien widziec zalacznik w zbiorze")
+
+        files_list = [self.fake_file]
+        
+        material = Material.create(self.valid_data, files_list)
+        
+        self.assertIsNotNone(material.id)
+        self.assertEqual(material.title, self.valid_data['title'])
+        self.assertEqual(material.status, "PENDING")
+        
+        attachments = material.attachments.all()
+        self.assertEqual(attachments.count(), 1)
+        self.assertEqual(attachments[0].fileName, "notatki.pdf")
+        
+        for att in attachments:
+            default_storage.delete(att.filePath)
 
     @patch('ExtLearnerUJ.models.Test.save')
     def test_material_addTest(self, mock_save):
@@ -16,15 +75,6 @@ class TestMaterialsAndGrading(TestCase):
         test = Test(id="test_1")
         result = m1.addTest(test)
         self.assertTrue(result)
-
-    @patch('ExtLearnerUJ.models.FileAttachment.upload')
-    def test_material_addFile(self, mock_upload):
-        from ExtLearnerUJ.models import Material, FileAttachment
-        mock_upload.return_value = True
-        m1 = Material(id="m_1")
-        file = FileAttachment(id="f_1")
-        result = m1.addFile(file)
-        self.assertIsNotNone(result)
 
     def test_material_increasePriority(self):
         from ExtLearnerUJ.models import Material
@@ -37,13 +87,6 @@ class TestMaterialsAndGrading(TestCase):
         m1 = Material(id="m_1", title="Title")
         details = m1.getDetails()
         self.assertEqual(details.title, "Title")
-
-    @patch('ExtLearnerUJ.models.FileAttachment.save')
-    def test_fileAttachment_upload(self, mock_save):
-        from ExtLearnerUJ.models import FileAttachment
-        file = FileAttachment()
-        result = file.upload("Passive voice")
-        self.assertTrue(result)
 
     def test_test_addQuestion(self):
         from ExtLearnerUJ.models import Test, Question
@@ -92,3 +135,9 @@ class TestMaterialsAndGrading(TestCase):
         service = GradingService()
         result = service.autoGradeMaterialTest("test_2", {"q1": "B"})
         self.assertIsNotNone(result)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Wywoływane raz po zakończeniu WSZYSTKICH testów w tej klasie."""
+        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core import mail
 from unittest.mock import patch, MagicMock
-from ExtLearnerUJ.models import User, Student, Moderator, Admin
+from ExtLearnerUJ.models import User, Student, Moderator, Admin, Session
 import re
 
 class TestUserModel(TestCase):
@@ -19,23 +19,40 @@ class TestUserModel(TestCase):
         token = re.search(r'\d{6}', mail.outbox[0].body).group()
         self.assertTrue(User.objects.get(email="student@uj.edu.pl").verifyEmail(token))
 
-    @patch('ExtLearnerUJ.models.Session.create')
-    def test_login(self, mock_session_create):
-        mock_session_create.return_value = MagicMock(token="token123")
-        session = self.user.login("test@example.com", "password123")
+    def test_login(self):
+        email = "login@test.pl"
+        password = "SuperTajneHaslo123"
+        self.user.register(email, password, "Tester")
+        
+        session = self.user.login(email, password)
+        
         self.assertIsNotNone(session)
-        mock_session_create.assert_called_once_with(self.user.id)
+        self.assertTrue(Session.objects.filter(token=session.token).exists())
+        
+        failed_session = self.user.login(email, "zle_haslo")
+        self.assertIsNone(failed_session)
 
-    @patch('ExtLearnerUJ.models.Session.invalidate')
-    def test_logout(self, mock_invalidate):
+    def test_logout(self):
+        session = Session.create(self.user.email)
+        self.assertTrue(Session.objects.filter(token=session.token).exists())
+        
         self.user.logout()
-        mock_invalidate.assert_called()
+        
+        session_exists = Session.objects.filter(token=session.token).exists()
+        self.assertFalse(session_exists, "Sesja nadal istnieje w bazie po wylogowaniu!")
 
-    @patch('ExtLearnerUJ.models.User.delete')
-    def test_deleteAccount(self, mock_delete):
-        result = self.user.deleteAccount()
+    def test_delete_account(self):
+        email = "delete.me@uj.edu.pl"
+        self.user.register(email, "haslo123", "DoUsuniecia")
+        user_instance = User.objects.get(email=email)
+        
+        Session.create(email)
+        
+        result = user_instance.deleteAccount()
+        
         self.assertTrue(result)
-        mock_delete.assert_called_once()
+        self.assertFalse(User.objects.filter(email=email).exists())
+        self.assertFalse(Session.objects.filter(userId=email).exists())
 
     @patch('ExtLearnerUJ.models.Report.submit')
     def test_submitReport(self, mock_submit):

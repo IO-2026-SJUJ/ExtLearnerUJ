@@ -6,7 +6,9 @@ from django.urls import path
 from django.core.mail import send_mail
 from django.conf import settings
 import random
-from . import views # upewnij się, że masz plik views.py
+import uuid
+import os
+from django.core.files.storage import default_storage
 
 class User(models.Model):
     email = models.CharField(max_length=255)
@@ -58,13 +60,34 @@ class User(models.Model):
             return False
 
     def login(self, email, password):
-        return None  # RED
+        try:
+            user = User.objects.get(email=email)
+            if check_password(password, user.password):
+                if user.status != "ACTIVE":
+                    return None
+                return Session.create(user.email)
+            
+            return None
+        except User.DoesNotExist:
+            return None
 
     def logout(self):
-        pass
+        sessions = Session.objects.filter(userId=self.email)
+        for session in sessions:
+            session.invalidate()
 
     def deleteAccount(self):
-        return False  # RED
+        try:
+            user_email = self.email
+            
+            Session.objects.filter(userId=user_email).delete()
+            EmailVerificationToken.objects.filter(userId=user_email).delete()
+            
+            self.delete()
+            
+            return True
+        except Exception:
+            return False
 
     def submitReport(self, targetType, targetId, reason):
         return None  # RED
@@ -159,10 +182,17 @@ class Session(models.Model):
 
     @classmethod
     def create(cls, userId):
-        return None  # RED
+        new_token = str(uuid.uuid4())
+        expiry = timezone.now() + timedelta(days=1)
+
+        return cls.objects.create(
+            userId=userId, 
+            token=new_token, 
+            expiresAt=expiry
+        )
 
     def invalidate(self):
-        pass
+        self.delete()
 
 
 class EmailVerificationToken(models.Model):
@@ -176,6 +206,36 @@ class EmailVerificationToken(models.Model):
         return True 
 
 
+class FileAttachment(models.Model):
+    fileName = models.CharField(max_length=255)
+    filePath = models.CharField(max_length=255)
+    fileType = models.CharField(max_length=50)
+    sizeBytes = models.BigIntegerField(default=0)
+    uploadedAt = models.DateTimeField(auto_now_add=True)
+
+    material = models.ForeignKey(
+        'Material', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        related_name='attachments'
+    )
+
+    def upload(self, fileStream):
+        try:
+            self.fileName = fileStream.name
+            self.sizeBytes = fileStream.size
+            self.fileType = fileStream.content_type
+
+            folder = 'uploads/'
+            name = default_storage.save(os.path.join(folder, self.fileName), fileStream)
+
+            self.filePath = name
+            self.save()
+            return True
+        except Exception as e:
+            print(f"Błąd podczas uploadu: {e}")
+            return False
+
 class Material(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
@@ -186,13 +246,33 @@ class Material(models.Model):
 
     @classmethod
     def create(cls, data, files):
-        return None
+        material = cls.objects.create(
+            title=data.get('title'),
+            content=data.get('content'),
+            authorId=data.get('authorId'),
+            status="PENDING", 
+            priority=0,
+            isVerified=False
+        )
+
+        if files:
+            for f in files:
+                attachment = FileAttachment()
+                if attachment.upload(f):
+                    material.attachments.add(attachment)
+
+        return material
 
     def addTest(self, test):
         return False
 
-    def addFile(self, file):
-        return None
+    def addFile(self, file_attachment):
+       try:
+            file_attachment.material = self
+            file_attachment.save()
+            return True
+       except Exception:
+            return False
 
     def increasePriority(self):
         pass
@@ -201,15 +281,7 @@ class Material(models.Model):
         return None
 
 
-class FileAttachment(models.Model):
-    fileName = models.CharField(max_length=255)
-    filePath = models.CharField(max_length=255)
-    fileType = models.CharField(max_length=50)
-    sizeBytes = models.BigIntegerField(default=0)
-    uploadedAt = models.DateTimeField(auto_now_add=True)
 
-    def upload(self, fileStream):
-        return False
 
 
 class Test(models.Model):
