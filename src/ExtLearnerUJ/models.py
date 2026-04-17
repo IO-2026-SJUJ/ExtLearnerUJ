@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth.hashers import make_password, check_password
 from django.urls import path
 from django.core.mail import send_mail
@@ -9,6 +11,11 @@ import random
 import uuid
 import os
 from django.core.files.storage import default_storage
+from django.urls import path
+from django.core.mail import send_mail
+from django.conf import settings
+import random
+from . import views # upewnij się, że masz plik views.py
 
 class User(models.Model):
     email = models.CharField(max_length=255)
