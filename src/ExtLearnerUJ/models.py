@@ -1,59 +1,84 @@
+"""
+Modele domenowe ExtLearnerUJ.
+
+Hierarchia (LSP z opis.md):
+    User → Student | Moderator | Admin    (multi-table inheritance)
+"""
+from __future__ import annotations
+
+import os
+import uuid
+import random
+from datetime import timedelta
+
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.mail import send_mail
+from django.contrib.auth.hashers import make_password, check_password
 from django.db import models
 from django.utils import timezone
-from datetime import timedelta
-from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth.hashers import make_password, check_password
-from django.urls import path
-from django.core.mail import send_mail
-from django.conf import settings
-import random
-import uuid
-import os
-from django.core.files.storage import default_storage
-from django.urls import path
-from django.core.mail import send_mail
-from django.conf import settings
-import random
-from . import views # upewnij się, że masz plik views.py
+
+def _default_email_token() -> str:
+    return str(random.randint(100000, 999999))
+
+
+def _default_email_token_expiry():
+    return timezone.now() + timedelta(days=1)
+
+
+def _default_session_expiry():
+    return timezone.now() + timedelta(days=1)
+
 
 class User(models.Model):
-    email = models.CharField(max_length=255)
+    STATUS_ACTIVE = 'ACTIVE'
+    STATUS_BLOCKED = 'BLOCKED'
+    STATUS_DELETED = 'DELETED'
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, 'Aktywne'),
+        (STATUS_BLOCKED, 'Zablokowane'),
+        (STATUS_DELETED, 'Usunięte'),
+    ]
+
+    email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
-    status = models.CharField(max_length=50)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     emailVerified = models.BooleanField(default=False)
     registrationDate = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [models.Index(fields=['email'])]
+
+    def __str__(self) -> str:
+        return f'{self.name} <{self.email}>'
+
     def register(self, email, password, name):
         hashed_password = make_password(password)
-    
+
         if User.objects.filter(email=email).exists():
             return False
 
         user = User.objects.create(
-        email=email, 
-        password=hashed_password, 
-        name=name,
-        status="ACTIVE"
+            email=email,
+            password=hashed_password,
+            name=name,
+            status=self.STATUS_ACTIVE,
         )
 
         token = EmailVerificationToken.objects.create(userId=user.email).token
         self.send_verification_email(user.email, token)
-        
+
         return User.objects.filter(email=email).exists()
 
     def send_verification_email(self, email, token_code):
         subject = 'Twój kod weryfikacyjny - ExtLearnerUJ'
-
-        message = f'Witaj {email}!\n\nTwój kod do weryfikacji konta to: {token_code}\n\nKod jest ważny przez 24 \\h.'
-    
-        send_mail(
-            subject, 
-            message, 
-            settings.EMAIL_HOST, 
-            [email]
+        message = (
+            f'Witaj {email}!\n\n'
+            f'Twój kod do weryfikacji konta to: {token_code}\n\n'
+            f'Kod jest ważny przez 24 h.'
         )
+        send_mail(subject, message, settings.EMAIL_HOST, [email])
 
     def verifyEmail(self, id):
         try:
@@ -62,7 +87,6 @@ class User(models.Model):
             self.save()
             token.delete()
             return True
-        
         except EmailVerificationToken.DoesNotExist:
             return False
 
@@ -70,10 +94,9 @@ class User(models.Model):
         try:
             user = User.objects.get(email=email)
             if check_password(password, user.password):
-                if user.status != "ACTIVE":
+                if user.status != self.STATUS_ACTIVE:
                     return None
                 return Session.create(user.email)
-            
             return None
         except User.DoesNotExist:
             return None
@@ -86,18 +109,15 @@ class User(models.Model):
     def deleteAccount(self):
         try:
             user_email = self.email
-            
             Session.objects.filter(userId=user_email).delete()
             EmailVerificationToken.objects.filter(userId=user_email).delete()
-            
             self.delete()
-            
             return True
         except Exception:
             return False
 
     def submitReport(self, targetType, targetId, reason):
-        return None  # RED
+        return None
 
 
 class Student(User):
@@ -137,65 +157,36 @@ class Student(User):
 
 
 class Moderator(User):
-    def viewMaterialsToVerify(self):
-        return []
-
-    def verifyMaterial(self, materialId, decision, comment):
-        return None
-
-    def editMaterialTests(self, materialId, newQuestions):
-        return False
-
-    def viewWorksToCheck(self):
-        return []
-
-    def reserveWork(self, workId):
-        return False
-
-    def checkWork(self, workId, reviewData):
-        return None
-
-    def viewModeratorStats(self):
-        pass
+    def viewMaterialsToVerify(self): return []
+    def verifyMaterial(self, materialId, decision, comment): return None
+    def editMaterialTests(self, materialId, newQuestions): return False
+    def viewWorksToCheck(self): return []
+    def reserveWork(self, workId): return False
+    def checkWork(self, workId, reviewData): return None
+    def viewModeratorStats(self): pass
 
 
 class Admin(User):
-    def viewSystemStats(self):
-        return {}
-
-    def reviewModeratorApplications(self):
-        return []
-
-    def acceptCandidate(self, applicationId):
-        return False
-
-    def rejectCandidate(self, applicationId, reason):
-        return False
-
-    def handleUserReports(self):
-        return []
-
-    def reviewReport(self, reportId, decision):
-        return False
-
-    def manageUserAccount(self, userId, newStatus, newRole):
-        pass
+    def viewSystemStats(self): return {}
+    def reviewModeratorApplications(self): return []
+    def acceptCandidate(self, applicationId): return False
+    def rejectCandidate(self, applicationId, reason): return False
+    def handleUserReports(self): return []
+    def reviewReport(self, reportId, decision): return False
+    def manageUserAccount(self, userId, newStatus, newRole): pass
 
 
 class Session(models.Model):
-    userId = models.CharField(max_length=255)
-    token = models.CharField(max_length=255)
-    expiresAt = models.DateTimeField(null=True)
+    userId = models.CharField(max_length=255, db_index=True)
+    token = models.CharField(max_length=255, unique=True)
+    expiresAt = models.DateTimeField(default=_default_session_expiry)
 
     @classmethod
     def create(cls, userId):
-        new_token = str(uuid.uuid4())
-        expiry = timezone.now() + timedelta(days=1)
-
         return cls.objects.create(
-            userId=userId, 
-            token=new_token, 
-            expiresAt=expiry
+            userId=userId,
+            token=str(uuid.uuid4()),
+            expiresAt=_default_session_expiry(),
         )
 
     def invalidate(self):
@@ -203,51 +194,55 @@ class Session(models.Model):
 
 
 class EmailVerificationToken(models.Model):
-    userId = models.CharField(max_length=255)
-    token = models.CharField(default=random.randint(100000, 999999))
-    expiresAt = models.DateTimeField(default=timezone.now() + timedelta(days=1))
+    userId = models.CharField(max_length=255, db_index=True)
+    # FIX: callable defaulty zamiast random.randint(...) wywoływanego raz
+    token = models.CharField(max_length=10, default=_default_email_token)
+    expiresAt = models.DateTimeField(default=_default_email_token_expiry)
 
     def verify(self):
         if self.expiresAt and timezone.now() > self.expiresAt:
             return False
-        return True 
+        return True
 
 
 class FileAttachment(models.Model):
     fileName = models.CharField(max_length=255)
-    filePath = models.CharField(max_length=255)
-    fileType = models.CharField(max_length=50)
+    filePath = models.CharField(max_length=500)
+    fileType = models.CharField(max_length=50, blank=True)
     sizeBytes = models.BigIntegerField(default=0)
     uploadedAt = models.DateTimeField(auto_now_add=True)
-
     material = models.ForeignKey(
-        'Material', 
-        on_delete=models.CASCADE, 
-        null=True, 
-        related_name='attachments'
+        'Material',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='attachments',
     )
 
     def upload(self, fileStream):
         try:
             self.fileName = fileStream.name
-            self.sizeBytes = fileStream.size
-            self.fileType = fileStream.content_type
-
+            self.sizeBytes = getattr(fileStream, 'size', 0)
+            self.fileType = getattr(fileStream, 'content_type', '')
             folder = 'uploads/'
             name = default_storage.save(os.path.join(folder, self.fileName), fileStream)
-
             self.filePath = name
             self.save()
             return True
         except Exception as e:
-            print(f"Błąd podczas uploadu: {e}")
+            print(f'Błąd podczas uploadu: {e}')
             return False
 
+
 class Material(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_VERIFIED = 'VERIFIED'
+    STATUS_REJECTED = 'REJECTED'
+
     title = models.CharField(max_length=255)
-    content = models.TextField()
-    authorId = models.CharField(max_length=255)
-    status = models.CharField(max_length=50)
+    content = models.TextField(blank=True)
+    authorId = models.CharField(max_length=255, db_index=True)
+    status = models.CharField(max_length=50, default=STATUS_PENDING)
     priority = models.IntegerField(default=0)
     isVerified = models.BooleanField(default=False)
 
@@ -257,28 +252,26 @@ class Material(models.Model):
             title=data.get('title'),
             content=data.get('content'),
             authorId=data.get('authorId'),
-            status="PENDING", 
+            status=cls.STATUS_PENDING,
             priority=0,
-            isVerified=False
+            isVerified=False,
         )
-
         if files:
             for f in files:
                 attachment = FileAttachment()
                 if attachment.upload(f):
                     material.attachments.add(attachment)
-
         return material
 
     def addTest(self, test):
         return False
 
     def addFile(self, file_attachment):
-       try:
+        try:
             file_attachment.material = self
             file_attachment.save()
             return True
-       except Exception:
+        except Exception:
             return False
 
     def increasePriority(self):
@@ -286,9 +279,6 @@ class Material(models.Model):
 
     def getDetails(self):
         return None
-
-
-
 
 
 class Test(models.Model):
@@ -346,11 +336,8 @@ class Notification(models.Model):
     message = models.TextField()
     isRead = models.BooleanField(default=False)
 
-    def send(self):
-        pass
-
-    def markAsRead(self):
-        pass
+    def send(self): pass
+    def markAsRead(self): pass
 
 
 class Work(models.Model):
@@ -362,11 +349,8 @@ class Work(models.Model):
     assignedModeratorId = models.CharField(max_length=255, null=True)
 
     @classmethod
-    def submit(cls, files, packageId):
-        return None
-
-    def assignModerator(self, moderatorId):
-        return False
+    def submit(cls, files, packageId): return None
+    def assignModerator(self, moderatorId): return False
 
 
 class Package(models.Model):
@@ -374,8 +358,7 @@ class Package(models.Model):
     price = models.FloatField(default=0.0)
     scope = models.CharField(max_length=255)
 
-    def select(self):
-        return None
+    def select(self): return None
 
 
 class PaymentTransaction(models.Model):
@@ -385,8 +368,7 @@ class PaymentTransaction(models.Model):
     status = models.CharField(max_length=50)
     method = models.CharField(max_length=50)
 
-    def process(self):
-        return False
+    def process(self): return False
 
 
 class WorkReview(models.Model):
@@ -396,14 +378,9 @@ class WorkReview(models.Model):
     generalComment = models.TextField()
     status = models.CharField(max_length=50)
 
-    def addErrorMark(self, mark):
-        return None
-
-    def addComment(self, comment):
-        return None
-
-    def publish(self):
-        return False
+    def addErrorMark(self, mark): return None
+    def addComment(self, comment): return None
+    def publish(self): return False
 
 
 class ErrorMark(models.Model):
@@ -418,8 +395,7 @@ class MaterialVerification(models.Model):
     moderatorId = models.CharField(max_length=255)
     decision = models.CharField(max_length=50)
 
-    def submit(self, decision, comment):
-        return False
+    def submit(self, decision, comment): return False
 
 
 class ModeratorApplication(models.Model):
@@ -427,11 +403,8 @@ class ModeratorApplication(models.Model):
     status = models.CharField(max_length=50)
     testResultId = models.CharField(max_length=255)
 
-    def submit(self):
-        return False
-
-    def evaluate(self):
-        return False
+    def submit(self): return False
+    def evaluate(self): return False
 
 
 class Report(models.Model):
@@ -439,13 +412,11 @@ class Report(models.Model):
     targetType = models.CharField(max_length=50)
     targetId = models.CharField(max_length=255)
     reason = models.TextField()
-    status = models.CharField(max_length=50, default="PENDING")
+    status = models.CharField(max_length=50, default='PENDING')
 
-    def submit(self):
-        return False
+    def submit(self): return False
+    def review(self, decision): return False
 
-    def review(self, decision):
-        return False
 
 class Statistics(models.Model):
     pass
