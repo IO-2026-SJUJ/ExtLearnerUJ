@@ -1,0 +1,5 @@
+Django>=5.0,<6.0
+python-dotenv>=1.0.0
+argon2-cffi>=23.1.0
+Pillow>=10.0.0
+coverage>=7.4.0
