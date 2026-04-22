@@ -1,0 +1,63 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Test diagnostyczny — w trakcie{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow">§ {{ test.title }}</p>
+
+    <form id="diagnostic-form"
+          method="post"
+          data-autosave-url="{% url 'diagnostic_autosave' test.id %}"
+          data-csrf-token="{{ csrf_token }}"
+          data-total-count="{{ questions|length }}">
+        {% csrf_token %}
+
+        <div class="test-progress">
+            <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">Postęp</span>
+            <div class="test-progress__bar" aria-hidden="true">
+                <div class="test-progress__fill" id="progress-fill"></div>
+            </div>
+            <span class="test-progress__status" id="progress-status">
+                Zmiany zapisują się automatycznie
+            </span>
+        </div>
+
+        {% for question in questions %}
+            <div class="question">
+                <div class="question__num">
+                    Pytanie {{ forloop.counter }} / {{ questions|length }}
+                    <span class="question__area">· {{ question.area|default:"general" }}</span>
+                </div>
+                <div class="question__text">{{ question.text }}</div>
+
+                <div class="question__options">
+                    {% for opt in question.options %}
+                        <label class="question__option">
+                            <input type="radio"
+                                   name="q_{{ question.id }}"
+                                   value="{{ opt }}"
+                                   {% if forloop.first and forloop.parentloop.first %}{% endif %}>
+                            <span>{{ opt }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: var(--sp-4); padding: var(--sp-6) 0; margin-top: var(--sp-5); border-top: var(--border-hair); flex-wrap: wrap;">
+            <button type="submit" class="btn btn--accent btn--lg">
+                Zakończ i zobacz wynik
+            </button>
+            <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">
+                Wróć do panelu
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'js/diagnostic.js' %}" defer></script>
+{% endblock %}

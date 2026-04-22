@@ -1,0 +1,64 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Wynik diagnostyki — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow reveal reveal-1">§ Wynik diagnostyki</p>
+    <h1 class="reveal reveal-2">
+        Oto, <em style="font-style: italic; color: var(--color-accent);">co wiemy</em>.
+    </h1>
+
+    <div class="score-hero reveal reveal-3">
+        <div class="score-hero__big">{{ result.score }}<span style="font-size: 0.4em; color: var(--color-ink-muted);">%</span></div>
+        <div class="score-hero__label">Wynik ogólny · {{ result.completedAt|date:"j F Y" }}</div>
+    </div>
+
+    <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Twoje obszary</h2>
+    <p class="reveal reveal-4" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Obszary z wynikiem poniżej 50% są podświetlone — tam warto zacząć.
+    </p>
+
+    <div class="area-chart reveal reveal-4">
+        {% for area, score in result.areaScores.items %}
+            <div class="area-bar">
+                <div class="area-bar__label">{{ area }}</div>
+                <div class="area-bar__track">
+                    <div class="area-bar__fill {% if score < 50 %}area-bar__fill--weak{% endif %}"
+                         data-score="{{ score }}"
+                         aria-label="{{ area }}: {{ score }}%"></div>
+                </div>
+                <div class="area-bar__value">{{ score }}%</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if weak_areas %}
+        <div style="margin-top: var(--sp-7); padding: var(--sp-5); background: var(--color-accent-soft); border-left: 3px solid var(--color-accent);">
+            <p class="eyebrow" style="margin: 0 0 var(--sp-2);">Rekomendacja</p>
+            <p style="margin: 0; color: var(--color-ink);">
+                Zacznij naukę od obszarów:
+                {% for area in weak_areas %}
+                    <strong class="mono" style="color: var(--color-accent);">{{ area }}</strong>{% if not forloop.last %}, {% endif %}
+                {% endfor %}.
+                W Sprincie 2 pojawi się tu link do rekomendowanych materiałów (FR-05).
+            </p>
+        </div>
+    {% else %}
+        <div style="margin-top: var(--sp-7); padding: var(--sp-5); background: var(--color-success-bg); border-left: 3px solid var(--color-success);">
+            <p class="eyebrow" style="margin: 0 0 var(--sp-2); color: var(--color-success);">Świetnie</p>
+            <p style="margin: 0;">Wszystkie obszary powyżej 50%. Skup się teraz na szlifowaniu detali.</p>
+        </div>
+    {% endif %}
+
+    <div style="display: flex; gap: var(--sp-4); margin-top: var(--sp-7); flex-wrap: wrap;">
+        <a href="{% url 'materials_list' %}" class="btn btn--accent btn--lg">Zobacz materiały</a>
+        <a href="{% url 'dashboard' %}" class="btn btn--lg">Wróć do panelu</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'js/area-chart.js' %}" defer></script>
+{% endblock %}

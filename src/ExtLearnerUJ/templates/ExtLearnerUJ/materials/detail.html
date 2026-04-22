@@ -1,0 +1,53 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}{{ material.title }} — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow reveal reveal-1">
+        § {{ material.category|default:"Materiał" }}
+        {% if material.isVerified %}
+            · <span class="chip chip--verified" style="margin-left: var(--sp-2);">✓ Zweryfikowany</span>
+        {% else %}
+            · <span class="chip chip--pending" style="margin-left: var(--sp-2);">⏳ Oczekuje na weryfikację</span>
+        {% endif %}
+    </p>
+
+    <h1 class="reveal reveal-2">{{ material.title }}</h1>
+
+    <div class="reveal reveal-3" style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin-bottom: var(--sp-6); padding-bottom: var(--sp-4); border-bottom: var(--border-soft);">
+        Autor: {{ material.authorId }}
+        &nbsp;·&nbsp;
+        Dodano: {{ material.createdAt|date:"j F Y" }}
+        &nbsp;·&nbsp;
+        Priorytet: {{ material.priority }}
+    </div>
+
+    <article class="reveal reveal-4" style="font-size: var(--fs-md); line-height: 1.7;">
+        {{ material.content|linebreaks }}
+    </article>
+
+    {% if material.attachments.exists %}
+        <section style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-hair);">
+            <h2>Załączniki</h2>
+            <ul style="list-style: none; padding: 0;">
+                {% for att in material.attachments.all %}
+                    <li class="mono" style="padding: var(--sp-2) 0;">
+                        → {{ att.fileName }}
+                        <span style="color: var(--color-ink-muted); font-size: var(--fs-xs);">
+                            ({{ att.sizeBytes|filesizeformat }})
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-soft);">
+        <a href="{% url 'materials_list' %}" class="btn">← Powrót do listy</a>
+        <span class="mono" style="margin-left: var(--sp-5); color: var(--color-ink-muted); font-size: var(--fs-xs);">
+            W Sprincie 2: głosowanie, ulubione, zgłaszanie błędów.
+        </span>
+    </div>
+</div>
+{% endblock %}

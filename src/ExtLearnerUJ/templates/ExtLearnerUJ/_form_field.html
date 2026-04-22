@@ -1,0 +1,14 @@
+{% comment %}
+Partial: renderuje pojedyncze pole formularza Django z etykietą,
+wartością help text i błędami. Spójny wygląd we wszystkich miejscach.
+{% endcomment %}
+<div class="form-field">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}
+        <small class="form-field__help">{{ field.help_text }}</small>
+    {% endif %}
+    {% for error in field.errors %}
+        <small class="form-field__error">{{ error }}</small>
+    {% endfor %}
+</div>

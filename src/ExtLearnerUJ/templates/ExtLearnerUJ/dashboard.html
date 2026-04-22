@@ -1,0 +1,117 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Panel — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Twój panel</p>
+    <h1 class="dashboard__greeting reveal reveal-2">
+        Cześć, <em>{{ app_user.name }}</em>.
+    </h1>
+    <p class="dashboard__tagline reveal reveal-3">
+        {% if last_diagnostic %}
+            Ostatnia diagnostyka: {{ last_diagnostic.completedAt|date:"j F Y, H:i" }} · wynik {{ last_diagnostic.score }}%
+        {% else %}
+            Zacznij od testu diagnostycznego — poznasz swój poziom w 15 minut.
+        {% endif %}
+    </p>
+
+    <div class="dashboard__row reveal reveal-3">
+        {% if last_diagnostic %}
+            <div class="panel">
+                <div class="panel__header">
+                    <h2>Twój ostatni wynik</h2>
+                    <a href="{% url 'diagnostic_result' last_diagnostic.id %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-xs);">
+                        zobacz szczegóły →
+                    </a>
+                </div>
+
+                <div style="display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-5);">
+                    <span style="font-family: var(--font-display); font-size: 4.5rem; font-weight: 700; line-height: 1; color: var(--color-accent);">
+                        {{ last_diagnostic.score }}<span style="font-size: 2rem; color: var(--color-ink-muted);">%</span>
+                    </span>
+                    <span class="mono" style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
+                        wynik ogólny
+                    </span>
+                </div>
+
+                <a href="{% url 'diagnostic_start' %}" class="btn">Powtórz diagnostykę</a>
+            </div>
+        {% else %}
+            <div class="panel panel--accent">
+                <div class="panel__header">
+                    <h2>Zacznij od diagnostyki</h2>
+                    <span class="mono" style="font-size: var(--fs-xs);">~ 15 min</span>
+                </div>
+                <p style="margin-bottom: var(--sp-5); opacity: 0.85;">
+                    Test diagnostyczny sprawdzi Twój poziom w czterech obszarach:
+                    gramatyka, czytanie, słuchanie, słownictwo. Na tej podstawie
+                    zobaczysz, od czego warto zacząć naukę.
+                </p>
+                <a href="{% url 'diagnostic_start' %}" class="btn btn--accent">Rozpocznij test</a>
+            </div>
+        {% endif %}
+
+        <div class="panel">
+            <div class="panel__header">
+                <h2>Skróty</h2>
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--sp-3);">
+                <li>
+                    <a href="{% url 'materials_list' %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
+                        → Przeglądaj materiały
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'diagnostic_start' %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
+                        → Test diagnostyczny
+                    </a>
+                </li>
+                <li style="color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--fs-xs); text-decoration: line-through;">
+                    · Dodaj własny materiał (Sprint 2)
+                </li>
+                <li style="color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--fs-xs); text-decoration: line-through;">
+                    · Wyślij pracę do sprawdzenia (Sprint 2)
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <section class="reveal reveal-4">
+        <div class="panel__header" style="border-bottom: var(--border-hair); margin-bottom: var(--sp-5); padding-bottom: var(--sp-3);">
+            <h2>Ostatnie materiały</h2>
+            <a href="{% url 'materials_list' %}"
+               style="font-family: var(--font-mono); font-size: var(--fs-xs);">
+                zobacz wszystkie →
+            </a>
+        </div>
+
+        {% if recent_materials %}
+            <div class="grid">
+                {% for m in recent_materials %}
+                    <a href="{% url 'material_detail' m.id %}" class="card" style="text-decoration: none; color: inherit;">
+                        <div class="card__eyebrow">{{ m.category|default:"—" }}</div>
+                        <h3 class="card__title">{{ m.title }}</h3>
+                        <div class="card__meta">
+                            {% if m.isVerified %}
+                                <span class="chip chip--verified">✓ Zweryfikowany</span>
+                            {% else %}
+                                <span class="chip chip--pending">⏳ Oczekuje</span>
+                            {% endif %}
+                            <span>priorytet: {{ m.priority }}</span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state__icon">?</div>
+                <p>Brak materiałów. Uruchom <span class="mono">python manage.py seed_materials</span> żeby zobaczyć przykłady.</p>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
