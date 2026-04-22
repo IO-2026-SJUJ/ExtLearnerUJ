@@ -1,0 +1,58 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>{% block title %}ExtLearnerUJ{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-header__inner">
+            <a href="{% url 'landing' %}" class="app-header__brand">
+                ExtLearner<em>UJ</em>
+            </a>
+            <nav class="app-nav">
+                {% if app_user %}
+                    <a href="{% url 'dashboard' %}">Panel</a>
+                    <a href="{% url 'materials_list' %}">Materiały</a>
+                    <a href="{% url 'diagnostic_start' %}">Diagnostyka</a>
+                    <span class="app-nav__user">— {{ app_user.name }}</span>
+                    <form method="post" action="{% url 'logout' %}" style="margin:0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn--ghost">Wyloguj</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}">Zaloguj</a>
+                    <a href="{% url 'register' %}" class="btn btn--primary">Załóż konto</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    {% if messages %}
+        <div class="messages" role="status" aria-live="polite">
+            {% for message in messages %}
+                <div class="message message--{{ message.tags|default:'info' }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <span>ExtLearnerUJ · Sprint 1 · zespół SJUJ</span>
+        &nbsp;·&nbsp;
+        <span>Julia Łapiuk · Seweryn Olejnik</span>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

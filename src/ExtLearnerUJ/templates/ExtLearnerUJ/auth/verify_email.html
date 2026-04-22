@@ -1,0 +1,31 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Weryfikacja e-mail — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Krok 2 z 2</p>
+    <h1 class="reveal reveal-2">Sprawdź <em style="font-style: italic; color: var(--color-accent);">skrzynkę</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Wysłaliśmy 6-cyfrowy kod na adres
+        <strong class="mono" style="color: var(--color-ink);">{{ email }}</strong>.
+        Wpisz go poniżej, żeby aktywować konto.
+    </p>
+
+    <form method="post" class="form reveal reveal-4" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {% with field=form.code %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+
+        <button type="submit" class="btn btn--accent btn--lg btn--block">Aktywuj konto</button>
+    </form>
+
+    <p style="margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--color-ink-muted);">
+        Nie widzisz wiadomości? Sprawdź folder <em>spam</em>.
+        Kod wygasa po 24 godzinach — w takim wypadku zarejestruj się ponownie.
+    </p>
+</div>
+{% endblock %}
