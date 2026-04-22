@@ -1,0 +1,69 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Materiały — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Baza materiałów</p>
+    <h1 class="reveal reveal-2">Materiały <em style="font-style: italic; color: var(--color-accent);">do nauki</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); max-width: 60ch; margin-bottom: var(--sp-6);">
+        Materiały oznaczone jako <span class="chip chip--verified" style="padding: 1px 6px; font-size: 0.7rem;">✓ zweryfikowane</span> zostały sprawdzone
+        przez moderatora. Te <span class="chip chip--pending" style="padding: 1px 6px; font-size: 0.7rem;">⏳ oczekujące</span>
+        czekają na weryfikację — możesz je oglądać, ale potraktuj ostrożnie.
+    </p>
+
+    <div class="filters reveal reveal-3">
+        <a href="?" class="filter {% if not current_category and not current_status %}active{% endif %}">
+            Wszystkie
+        </a>
+        {% for cat in categories %}
+            <a href="?category={{ cat }}" class="filter {% if current_category == cat %}active{% endif %}">
+                {{ cat }}
+            </a>
+        {% endfor %}
+        <span style="width: 1px; background: var(--color-paper-dark); margin: 0 var(--sp-2);" aria-hidden="true"></span>
+        <a href="?status=verified" class="filter {% if current_status == 'verified' %}active{% endif %}">
+            ✓ Zweryfikowane
+        </a>
+        <a href="?status=pending" class="filter {% if current_status == 'pending' %}active{% endif %}">
+            ⏳ Oczekujące
+        </a>
+    </div>
+
+    {% if materials %}
+        <div class="grid reveal reveal-4">
+            {% for m in materials %}
+                <a href="{% url 'material_detail' m.id %}" class="card" style="text-decoration: none; color: inherit;">
+                    <div class="card__eyebrow">{{ m.category|default:"—" }}</div>
+                    <h3 class="card__title">{{ m.title }}</h3>
+                    <p style="font-size: var(--fs-sm); color: var(--color-ink-soft); margin: 0;">
+                        {{ m.content|truncatewords:18 }}
+                    </p>
+                    <div class="card__meta">
+                        {% if m.isVerified %}
+                            <span class="chip chip--verified">✓ Zweryfikowany</span>
+                        {% elif m.status == 'REJECTED' %}
+                            <span class="chip chip--rejected">✗ Odrzucony</span>
+                        {% else %}
+                            <span class="chip chip--pending">⏳ Oczekuje</span>
+                        {% endif %}
+                        <span>priorytet: {{ m.priority }}</span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-4">
+            <div class="empty-state__icon">∅</div>
+            <p>Brak materiałów spełniających kryteria.</p>
+            {% if current_category or current_status %}
+                <p><a href="?">Pokaż wszystkie →</a></p>
+            {% else %}
+                <p class="mono" style="font-size: var(--fs-xs);">
+                    Uruchom <code>python manage.py seed_materials</code> żeby dodać przykłady.
+                </p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
