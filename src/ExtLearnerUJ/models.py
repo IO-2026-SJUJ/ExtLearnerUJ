@@ -37,8 +37,7 @@ def _default_email_token_expiry():
 
 
 def _default_session_expiry():
-    hours = getattr(settings, 'SESSION_LIFETIME_HOURS', 24)
-    return timezone.now() + timedelta(hours=hours)
+    return timezone.now() + timedelta(hours=settings.SESSION_LIFETIME_HOURS)
 
 
 # ============================================================
@@ -101,8 +100,7 @@ class User(models.Model):
             f'Kod jest ważny przez 24 godziny.\n\n'
             f'Jeśli nie zakładałeś/aś konta, zignoruj tę wiadomość.'
         )
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST', 'noreply@example.com')
-        send_mail(subject, message, from_email, [self.email])
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [self.email])
 
     def verifyEmail(self, token_code: str) -> bool:
         """Weryfikuje token i aktywuje konto. UC02."""
@@ -264,8 +262,7 @@ class Session(models.Model):
 
     def refresh(self) -> None:
         """Odświeża sesję jeśli zostało <1h do wygaśnięcia."""
-        threshold_hours = getattr(settings, 'SESSION_REFRESH_THRESHOLD_HOURS', 1)
-        threshold = timezone.now() + timedelta(hours=threshold_hours)
+        threshold = timezone.now() + timedelta(hours=settings.SESSION_REFRESH_THRESHOLD_HOURS)
         if self.expiresAt < threshold:
             self.expiresAt = _default_session_expiry()
             self.save(update_fields=['expiresAt'])
