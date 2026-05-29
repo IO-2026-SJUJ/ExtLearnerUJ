@@ -1,0 +1,28 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Logowanie — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Logowanie</p>
+    <h1 class="reveal reveal-2">Witaj z <em style="font-style: italic; color: var(--color-accent);">powrotem</em>.</h1>
+
+    <form method="post" class="form reveal reveal-3" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% with field=form.email %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.password %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+
+        <button type="submit" class="btn btn--accent btn--lg btn--block">Zaloguj</button>
+    </form>
+
+    <p style="margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--color-ink-muted);">
+        Nie masz jeszcze konta? <a href="{% url 'register' %}">Zarejestruj się</a>.
+    </p>
+</div>
+{% endblock %}

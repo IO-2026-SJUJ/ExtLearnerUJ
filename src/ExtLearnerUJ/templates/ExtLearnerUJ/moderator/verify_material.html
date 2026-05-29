@@ -1,0 +1,140 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Weryfikacja: {{ material.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .verify-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: var(--sp-6);
+        align-items: start;
+    }
+    @media (max-width: 960px) {
+        .verify-layout { grid-template-columns: 1fr; }
+    }
+    .verify-main {
+        border: var(--border-hair);
+        padding: var(--sp-6);
+        background: var(--color-paper);
+    }
+    .verify-side {
+        position: sticky;
+        top: 90px;
+        border: 2px solid var(--color-ink);
+        padding: var(--sp-5);
+        background: var(--color-paper);
+    }
+    .decision-radio {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-4);
+    }
+    .decision-radio li {
+        list-style: none;
+    }
+    .decision-radio label {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        border: var(--border-hair);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: background 0.1s ease;
+    }
+    .decision-radio label:hover { background: var(--color-paper-dark); }
+    .decision-radio li:has(input:checked) label {
+        background: var(--color-accent-soft);
+        border-color: var(--color-accent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">
+        § Weryfikacja · {{ material.category|default:"ogólna" }}
+        <span style="margin-left: var(--sp-3); color: var(--color-ink-muted);">
+            priorytet <strong class="mono" style="color: var(--color-accent);">{{ material.priority }}</strong>
+        </span>
+    </p>
+    <h1 class="reveal reveal-2">{{ material.title }}</h1>
+
+    <div class="reveal reveal-3" style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin-bottom: var(--sp-6); padding-bottom: var(--sp-3); border-bottom: var(--border-soft);">
+        Autor: {{ material.authorId }}
+        &nbsp;·&nbsp; Dodano: {{ material.createdAt|date:"j F Y, H:i" }}
+    </div>
+
+    <div class="verify-layout reveal reveal-4">
+        <article class="verify-main">
+            <h2 style="font-size: var(--fs-md); margin-top: 0;">Treść materiału</h2>
+            <div style="font-size: var(--fs-base); line-height: 1.7;">
+                {{ material.content|linebreaks }}
+            </div>
+
+            {% if material.attachments.exists %}
+                <section style="margin-top: var(--sp-6); padding-top: var(--sp-4); border-top: var(--border-soft);">
+                    <h3 style="font-size: var(--fs-sm); margin-bottom: var(--sp-3);">Załączniki</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        {% for att in material.attachments.all %}
+                            <li class="mono" style="padding: var(--sp-2) 0; font-size: var(--fs-sm);">
+                                → {{ att.fileName }}
+                                <span style="color: var(--color-ink-muted); font-size: var(--fs-xs);">
+                                    ({{ att.sizeBytes|filesizeformat }})
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+        </article>
+
+        <aside class="verify-side">
+            <h2 style="font-size: var(--fs-md); margin-top: 0; margin-bottom: var(--sp-4);">
+                Twoja decyzja
+            </h2>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="message message--error" style="margin-bottom: var(--sp-4);">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <ul class="decision-radio">
+                    {% for radio in form.decision %}
+                        <li>{{ radio }}</li>
+                    {% endfor %}
+                </ul>
+                {% for error in form.decision.errors %}
+                    <small class="form-field__error">{{ error }}</small>
+                {% endfor %}
+
+                <div class="form-field" style="margin-bottom: var(--sp-4);">
+                    <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+                    {{ form.comment }}
+                    <small class="form-field__help">{{ form.comment.help_text }}</small>
+                    {% for error in form.comment.errors %}
+                        <small class="form-field__error">{{ error }}</small>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="btn btn--accent btn--block">
+                    Zapisz decyzję
+                </button>
+                <a href="{% url 'moderator_materials_queue' %}"
+                   class="btn btn--ghost btn--block"
+                   style="margin-top: var(--sp-2);">
+                    Wróć do kolejki
+                </a>
+            </form>
+        </aside>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Prace do sprawdzenia — moderator{% endblock %}
+
+{% block extra_head %}
+<style>
+    .queue {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--fs-sm);
+    }
+    .queue thead th {
+        text-align: left;
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-ink-muted);
+        padding: var(--sp-3) var(--sp-4);
+        border-bottom: var(--border-hair);
+    }
+    .queue tbody tr { border-bottom: var(--border-soft); }
+    .queue td { padding: var(--sp-4); vertical-align: top; }
+    .status-chip {
+        display: inline-block;
+        padding: 2px var(--sp-2);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+    .status-chip--paid { color: var(--color-ink-soft); border: 1px solid currentColor; }
+    .status-chip--mine { color: var(--color-accent); border: 1px solid currentColor; background: var(--color-accent-soft); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Moderator · prace pisemne</p>
+    <h1 class="reveal reveal-2">Kolejka <em style="font-style: italic; color: var(--color-accent);">prac</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Zarezerwuj pracę — trafi do Twojego edytora i nikt inny nie zacznie jej sprawdzać.
+    </p>
+
+    {% if works %}
+        <div class="reveal reveal-4" style="overflow-x: auto;">
+            <table class="queue">
+                <thead>
+                    <tr>
+                        <th>Wysłane</th>
+                        <th>Tytuł</th>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in works %}
+                        <tr>
+                            <td class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                                {{ w.submittedAt|date:"j.m.Y H:i" }}
+                            </td>
+                            <td>
+                                <strong>{{ w.title }}</strong>
+                            </td>
+                            <td class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                                {{ w.studentId }}
+                            </td>
+                            <td>
+                                {% if w.assignedModeratorId == app_user.email %}
+                                    <span class="status-chip status-chip--mine">✍ Moja</span>
+                                {% else %}
+                                    <span class="status-chip status-chip--paid">Dostępna</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if w.assignedModeratorId == app_user.email %}
+                                    <a href="{% url 'moderator_work_editor' w.id %}" class="btn btn--accent">
+                                        Kontynuuj →
+                                    </a>
+                                {% else %}
+                                    <form method="post" action="{% url 'moderator_reserve_work' w.id %}" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn">Zarezerwuj</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-4">
+            <div class="empty-state__icon">✓</div>
+            <p>Brak prac w kolejce. Zajrzyj później.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

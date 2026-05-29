@@ -1,0 +1,108 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Kolejka materiałów — moderator{% endblock %}
+
+{% block extra_head %}
+<style>
+    .queue {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--fs-sm);
+    }
+    .queue thead th {
+        text-align: left;
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-ink-muted);
+        padding: var(--sp-3) var(--sp-4);
+        border-bottom: var(--border-hair);
+    }
+    .queue tbody tr {
+        border-bottom: var(--border-soft);
+        transition: background 0.1s ease;
+    }
+    .queue tbody tr:hover {
+        background: var(--color-paper-dark);
+    }
+    .queue td {
+        padding: var(--sp-4);
+        vertical-align: top;
+    }
+    .queue__title {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--color-ink);
+        text-decoration: none;
+    }
+    .queue__title:hover { color: var(--color-accent); }
+    .queue__priority {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: var(--fs-md);
+    }
+    .queue__priority--hot { color: var(--color-accent); }
+    .queue__meta {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-ink-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Panel moderatora</p>
+    <h1 class="reveal reveal-2">Kolejka <em style="font-style: italic; color: var(--color-accent);">weryfikacji</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Materiały posortowane wg priorytetu (liczby głosów) — najbardziej potrzebne na górze.
+    </p>
+
+    {% if materials %}
+        <div class="reveal reveal-4" style="overflow-x: auto;">
+            <table class="queue">
+                <thead>
+                    <tr>
+                        <th>Priorytet</th>
+                        <th>Tytuł</th>
+                        <th>Kategoria</th>
+                        <th>Autor</th>
+                        <th>Dodany</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in materials %}
+                        <tr>
+                            <td>
+                                <span class="queue__priority {% if m.priority >= 10 %}queue__priority--hot{% endif %}">
+                                    {{ m.priority }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'moderator_verify_material' m.id %}" class="queue__title">
+                                    {{ m.title }}
+                                </a>
+                            </td>
+                            <td class="queue__meta">{{ m.category|default:"—" }}</td>
+                            <td class="queue__meta">{{ m.authorId }}</td>
+                            <td class="queue__meta">{{ m.createdAt|date:"j.m.Y" }}</td>
+                            <td>
+                                <a href="{% url 'moderator_verify_material' m.id %}" class="btn">
+                                    Weryfikuj →
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-4">
+            <div class="empty-state__icon">✓</div>
+            <p>Brak materiałów w kolejce. Świetnie się spisujesz.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

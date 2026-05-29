@@ -1,0 +1,59 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Użytkownicy — admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Admin · użytkownicy</p>
+    <h1 class="reveal reveal-2">Zarządzanie <em style="font-style: italic; color: var(--color-accent);">kontami</em>.</h1>
+
+    {% if users %}
+        <div class="reveal reveal-3" style="margin-top: var(--sp-5); border: var(--border-hair);">
+            <table style="width: 100%; border-collapse: collapse; font-size: var(--fs-sm);">
+                <thead>
+                    <tr style="border-bottom: var(--border-hair);">
+                        <th style="text-align: left; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">Imię</th>
+                        <th style="text-align: left; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">Email</th>
+                        <th style="text-align: left; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">Status</th>
+                        <th style="text-align: left; padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">Rejestracja</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                        <tr style="border-bottom: var(--border-soft);">
+                            <td style="padding: var(--sp-3) var(--sp-4);">
+                                <strong>{{ u.name }}</strong>
+                            </td>
+                            <td style="padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs);">
+                                {{ u.email }}
+                            </td>
+                            <td style="padding: var(--sp-3) var(--sp-4);">
+                                {% if u.status == 'ACTIVE' %}
+                                    <span class="chip chip--verified">✓ Aktywne</span>
+                                {% elif u.status == 'BLOCKED' %}
+                                    <span class="chip chip--rejected">🚫 Zablokowane</span>
+                                {% else %}
+                                    <span class="chip">{{ u.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding: var(--sp-3) var(--sp-4); font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                                {{ u.registrationDate|date:"j.m.Y" }}
+                            </td>
+                            <td style="padding: var(--sp-3) var(--sp-4);">
+                                <a href="{% url 'admin_user_detail' u.email %}" class="btn">
+                                    Szczegóły →
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>Brak użytkowników w systemie.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

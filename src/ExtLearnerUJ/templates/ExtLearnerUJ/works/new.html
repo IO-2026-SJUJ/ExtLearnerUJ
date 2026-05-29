@@ -1,0 +1,112 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Wyślij pracę — ExtLearnerUJ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .packages {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-5);
+    }
+    .pkg-option {
+        display: block;
+        padding: var(--sp-4) var(--sp-5);
+        border: var(--border-hair);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: var(--color-paper);
+    }
+    .pkg-option:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: var(--shadow-sm);
+    }
+    .pkg-option input[type=radio] { display: none; }
+    .pkg-option:has(input:checked) {
+        border-color: var(--color-accent);
+        border-width: 2px;
+        padding: calc(var(--sp-4) - 1px) calc(var(--sp-5) - 1px);
+        background: var(--color-accent-soft);
+        transform: translate(-2px, -2px);
+        box-shadow: var(--shadow-sm);
+    }
+    .pkg-option__name {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: var(--fs-md);
+        margin-bottom: var(--sp-2);
+    }
+    .pkg-option__price {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xl);
+        font-weight: 600;
+        color: var(--color-accent);
+        margin-bottom: var(--sp-2);
+    }
+    .pkg-option__scope {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-ink-muted);
+        margin-bottom: var(--sp-3);
+    }
+    .pkg-option__desc {
+        font-size: var(--fs-sm);
+        line-height: 1.5;
+        color: var(--color-ink-soft);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Wyślij pracę do sprawdzenia</p>
+    <h1 class="reveal reveal-2">Dostań <em style="font-style: italic; color: var(--color-accent);">rzetelny feedback</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Moderator z certyfikatem C1+ sprawdzi Twoją pracę i wskaże co poprawić.
+        Efekt otrzymasz zgodnie z wybranym pakietem.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="form reveal reveal-4" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {# Pakiet — render własny, bo potrzebujemy bogatego UI #}
+        <div class="form-field">
+            <label>Wybierz pakiet sprawdzenia</label>
+            <div class="packages">
+                {% for pkg in form.package.field.queryset %}
+                    <label class="pkg-option">
+                        <input type="radio" name="package" value="{{ pkg.id }}"
+                               {% if forloop.first %}checked{% endif %}>
+                        <div class="pkg-option__name">{{ pkg.name }}</div>
+                        <div class="pkg-option__price">{{ pkg.price }} zł</div>
+                        <div class="pkg-option__scope">{{ pkg.scope }}</div>
+                        <div class="pkg-option__desc">{{ pkg.description }}</div>
+                    </label>
+                {% endfor %}
+            </div>
+            {% for error in form.package.errors %}
+                <small class="form-field__error">{{ error }}</small>
+            {% endfor %}
+        </div>
+
+        {% with field=form.title %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.description %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.attachment %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+
+        <p style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted);">
+            Wklej treść pracy <strong>albo</strong> załącz plik. Jedno z dwóch musi być wypełnione.
+        </p>
+
+        <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+            <button type="submit" class="btn btn--accent btn--lg">Przejdź do płatności →</button>
+            <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">Anuluj</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

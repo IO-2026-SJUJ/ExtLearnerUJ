@@ -1,0 +1,153 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}{{ work.title }} — moja praca{% endblock %}
+
+{% block extra_head %}
+<style>
+    .status-badge {
+        display: inline-block;
+        padding: var(--sp-2) var(--sp-4);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        border: 1px solid currentColor;
+        margin-bottom: var(--sp-4);
+    }
+    .status-badge--pending { color: var(--color-warning); }
+    .status-badge--paid    { color: var(--color-ink-soft); }
+    .status-badge--review  { color: var(--color-accent); }
+    .status-badge--done    { color: var(--color-success); }
+
+    .review-grade {
+        font-family: var(--font-display);
+        font-size: 4rem;
+        font-weight: 700;
+        color: var(--color-accent);
+        line-height: 1;
+        display: inline-block;
+        padding: var(--sp-3) var(--sp-5);
+        border: 3px solid var(--color-accent);
+    }
+    .error-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-3);
+    }
+    .error-item {
+        padding: var(--sp-3) var(--sp-4);
+        border-left: 3px solid;
+    }
+    .error-item--grammar   { border-color: #c0392b; background: #fff3f0; }
+    .error-item--unnatural { border-color: #b8870e; background: #fff9e6; }
+    .error-item--positive  { border-color: #1e6b47; background: #e3f0e8; }
+    .error-item__snippet {
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        font-weight: 500;
+        margin-bottom: var(--sp-1);
+    }
+    .error-item__comment {
+        font-size: var(--fs-sm);
+        color: var(--color-ink-soft);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow reveal reveal-1">§ Twoja praca</p>
+    <h1 class="reveal reveal-2">{{ work.title }}</h1>
+
+    <div class="reveal reveal-3">
+        {% if work.status == 'PENDING_PAYMENT' %}
+            <span class="status-badge status-badge--pending">⏸ Oczekuje na płatność</span>
+            <p style="color: var(--color-ink-muted);">
+                Aby praca trafiła do moderatora, dokończ płatność.
+            </p>
+            <a href="{% url 'work_payment' work.id %}" class="btn btn--accent">
+                Zapłać i wyślij →
+            </a>
+        {% elif work.status == 'PAID' %}
+            <span class="status-badge status-badge--paid">✓ Opłacone — w kolejce</span>
+            <p style="color: var(--color-ink-muted);">
+                Twoja praca czeka na moderatora. Gdy ktoś ją zarezerwuje, status się zmieni.
+            </p>
+        {% elif work.status == 'IN_REVIEW' %}
+            <span class="status-badge status-badge--review">✍ W trakcie sprawdzania</span>
+            <p style="color: var(--color-ink-muted);">
+                Moderator pracuje nad Twoją pracą. Feedback pojawi się tu.
+            </p>
+        {% elif work.status == 'REVIEWED' %}
+            <span class="status-badge status-badge--done">✓ Sprawdzone</span>
+        {% endif %}
+    </div>
+
+    <div class="reveal reveal-4" style="margin-top: var(--sp-5); padding: var(--sp-5); background: var(--color-paper); border: var(--border-hair);">
+        <h3 style="font-size: var(--fs-md); margin-top: 0; margin-bottom: var(--sp-3);">
+            Treść pracy
+        </h3>
+        <div style="line-height: 1.7; font-size: var(--fs-base); white-space: pre-wrap;">{{ work.description }}</div>
+
+        {% if work.attachments.exists %}
+            <div style="margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: var(--border-soft);">
+                <h4 style="font-size: var(--fs-sm); margin: 0 0 var(--sp-2);">Załączniki</h4>
+                {% for att in work.attachments.all %}
+                    <a href="{{ MEDIA_URL }}{{ att.filePath }}" target="_blank" rel="noopener"
+                       class="mono" style="display: block; padding: var(--sp-1) 0; font-size: var(--fs-sm);">
+                        → {{ att.fileName }}
+                        <span style="color: var(--color-ink-muted); font-size: var(--fs-xs);">
+                            ({{ att.sizeBytes|filesizeformat }})
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    {% if review %}
+        <section class="reveal reveal-4" style="margin-top: var(--sp-8);">
+            <p class="eyebrow">Feedback moderatora</p>
+            <h2>Ocena i komentarz</h2>
+
+            <div style="display: flex; align-items: center; gap: var(--sp-5); margin: var(--sp-5) 0; flex-wrap: wrap;">
+                <span class="review-grade">{{ review.grade|default:"—" }}</span>
+                <div>
+                    <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted); text-transform: uppercase; letter-spacing: 0.1em;">
+                        Poziom CEFR
+                    </div>
+                    <div style="font-size: var(--fs-sm); color: var(--color-ink-muted); margin-top: var(--sp-1);">
+                        Oceniono {{ review.publishedAt|date:"j F Y" }}
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: var(--sp-5); background: var(--color-paper); border: var(--border-hair); line-height: 1.7; margin-bottom: var(--sp-6);">
+                {{ review.generalComment|linebreaks }}
+            </div>
+
+            {% if error_marks %}
+                <h3 style="font-size: var(--fs-md); margin-top: var(--sp-6);">Zaznaczenia</h3>
+                <div class="error-list">
+                    {% for mark in error_marks %}
+                        <div class="error-item error-item--{{ mark.type|lower }}">
+                            <div class="error-item__snippet">„{{ mark.textSnippet }}"</div>
+                            {% if mark.comment %}
+                                <div class="error-item__comment">{{ mark.comment }}</div>
+                            {% else %}
+                                <div class="error-item__comment" style="font-style: italic; opacity: 0.7;">
+                                    {{ mark.get_type_display }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-hair);">
+        <a href="{% url 'my_works' %}" class="btn">← Moje prace</a>
+    </div>
+</div>
+{% endblock %}

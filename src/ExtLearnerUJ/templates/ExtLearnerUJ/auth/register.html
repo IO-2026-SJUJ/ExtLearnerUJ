@@ -1,0 +1,33 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Rejestracja — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Rejestracja</p>
+    <h1 class="reveal reveal-2">Załóż konto.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Po rejestracji dostaniesz 6-cyfrowy kod na podany adres e-mail.
+    </p>
+
+    <form method="post" class="form reveal reveal-4" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% with field=form.name %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.email %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.password %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.password_confirm %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+
+        <button type="submit" class="btn btn--accent btn--lg btn--block">Utwórz konto</button>
+    </form>
+
+    <p style="margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--color-ink-muted);">
+        Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a>.
+    </p>
+</div>
+{% endblock %}

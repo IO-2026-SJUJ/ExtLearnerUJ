@@ -1,0 +1,56 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}ExtLearnerUJ — przygotuj się do egzaminu eksternistycznego{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="hero">
+        <aside class="hero__aside reveal reveal-1">
+            EGZAMIN<br>
+            EKSTERNISTYCZNY<br>
+            UJ · POZIOM B2+
+        </aside>
+
+        <p class="hero__eyebrow reveal reveal-1">§ 01 · Platforma dla studentów UJ</p>
+        <h1 class="hero__title reveal reveal-2">
+            Naucz się języka <em>bez chaosu</em> materiałów z internetu.
+        </h1>
+        <p class="hero__lead reveal reveal-3">
+            Jedno miejsce do przygotowania się do egzaminu eksternistycznego
+            z języka angielskiego. Test diagnostyczny, zweryfikowane materiały,
+            statystyki postępów, sprawdzanie prac pisemnych przez ekspertów.
+        </p>
+        <div class="hero__actions reveal reveal-4">
+            <a href="{% url 'register' %}" class="btn btn--accent btn--lg">Zacznij teraz</a>
+            <a href="{% url 'login' %}" class="btn btn--lg">Mam już konto</a>
+        </div>
+    </section>
+
+    <section class="features">
+        <article class="reveal reveal-2">
+            <span class="feature__num">i.</span>
+            <h3 class="feature__title">Test diagnostyczny</h3>
+            <p class="feature__body">
+                W 15 minut sprawdzasz poziom z gramatyki, czytania,
+                słuchania i słownictwa. Wiesz, na czym się skupić.
+            </p>
+        </article>
+        <article class="reveal reveal-3">
+            <span class="feature__num">ii.</span>
+            <h3 class="feature__title">Zweryfikowane materiały</h3>
+            <p class="feature__body">
+                Baza materiałów sprawdzonych przez moderatorów z certyfikatami C1+.
+                Głosujesz na to, co jest najbardziej potrzebne.
+            </p>
+        </article>
+        <article class="reveal reveal-4">
+            <span class="feature__num">iii.</span>
+            <h3 class="feature__title">Sprawdzanie prac</h3>
+            <p class="feature__body">
+                Twoje eseje poprawia ekspert — z kolorowymi zaznaczeniami
+                i konstruktywnym feedbackiem. Uczysz się na własnych błędach.
+            </p>
+        </article>
+    </section>
+</div>
+{% endblock %}
