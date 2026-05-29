@@ -1,0 +1,84 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Panel moderatora — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Panel moderatora</p>
+    <h1 class="dashboard__greeting reveal reveal-2">
+        Witaj, <em>{{ app_user.name }}</em>.
+    </h1>
+    <p class="dashboard__tagline reveal reveal-3">
+        Społeczność polega na Twojej merytorycznej ocenie.
+    </p>
+
+    <div class="dashboard__row reveal reveal-3">
+        <div class="panel panel--accent">
+            <div class="panel__header">
+                <h2>Do weryfikacji</h2>
+                <span class="mono" style="font-size: var(--fs-xs); opacity: 0.75;">materiały</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-5);">
+                <span style="font-family: var(--font-display); font-size: 4.5rem; font-weight: 700; line-height: 1; color: var(--color-paper);">
+                    {{ pending_count }}
+                </span>
+                <span class="mono" style="font-size: var(--fs-sm); opacity: 0.75;">
+                    oczekujących pozycji
+                </span>
+            </div>
+            <a href="{% url 'moderator_materials_queue' %}" class="btn btn--accent">
+                Otwórz kolejkę →
+            </a>
+        </div>
+
+        <div class="panel">
+            <div class="panel__header">
+                <h2>Twój wkład</h2>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-5);">
+                <span style="font-family: var(--font-display); font-size: 3rem; font-weight: 700; line-height: 1; color: var(--color-accent);">
+                    {{ verified_by_me }}
+                </span>
+                <span class="mono" style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
+                    zweryfikowanych
+                </span>
+            </div>
+            <p style="font-size: var(--fs-sm); color: var(--color-ink-muted); margin: 0;">
+                W Sprincie 3 pojawi się tu ranking moderatorów i szczegółowe statystyki.
+            </p>
+        </div>
+    </div>
+
+    <section class="reveal reveal-4">
+        <div class="panel__header" style="border-bottom: var(--border-hair); margin-bottom: var(--sp-5); padding-bottom: var(--sp-3);">
+            <h2>Co dalej</h2>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card__eyebrow">Sprint 2</div>
+                <h3 class="card__title">Weryfikacja materiałów</h3>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-soft);">
+                    Otwieraj kolejkę, czytaj materiał, wybieraj: zatwierdź / odrzuć / do poprawy.
+                    System sam powiadomi autora.
+                </p>
+            </div>
+            <div class="card" style="opacity: 0.6;">
+                <div class="card__eyebrow">Sprint 2 — w trakcie</div>
+                <h3 class="card__title">Sprawdzanie prac pisemnych</h3>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
+                    Pojawi się w 2. tygodniu Sprintu 2. Edytor z kolorowymi zaznaczeniami
+                    i komentarzami per fragment.
+                </p>
+            </div>
+            <div class="card" style="opacity: 0.6;">
+                <div class="card__eyebrow">Sprint 3</div>
+                <h3 class="card__title">Zarobki i statystyki</h3>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
+                    Saldo za sprawdzone prace, historia wypłat, średnia ocena od studentów.
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -64,6 +64,10 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
+<<<<<<< HEAD
+=======
+                'django.template.context_processors.media',
+>>>>>>> sprint-2
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 # Własny context processor — udostępnia `app_user` we wszystkich

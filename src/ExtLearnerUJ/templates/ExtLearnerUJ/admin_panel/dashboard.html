@@ -1,0 +1,96 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Panel administratora{% endblock %}
+
+{% block extra_head %}
+<style>
+    .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-7);
+    }
+    .metric {
+        padding: var(--sp-5);
+        border: var(--border-hair);
+        background: var(--color-paper);
+    }
+    .metric__label {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-ink-muted);
+        margin-bottom: var(--sp-2);
+    }
+    .metric__value {
+        font-family: var(--font-display);
+        font-size: 2.8rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--color-ink);
+    }
+    .metric--alert .metric__value { color: var(--color-accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Panel administratora</p>
+    <h1 class="dashboard__greeting reveal reveal-2">
+        Panel <em>{{ app_user.name }}</em>.
+    </h1>
+    <p class="dashboard__tagline reveal reveal-3">
+        Stan platformy na dziś, {{ "now"|date:"j F Y" }}.
+    </p>
+
+    <h2 class="reveal reveal-3" style="margin-top: var(--sp-6);">Statystyki</h2>
+
+    <div class="metrics reveal reveal-4">
+        <div class="metric">
+            <div class="metric__label">Użytkownicy</div>
+            <div class="metric__value">{{ stats.total_users }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric__label">Studenci</div>
+            <div class="metric__value">{{ stats.total_students }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric__label">Moderatorzy</div>
+            <div class="metric__value">{{ stats.total_moderators }}</div>
+        </div>
+        <div class="metric {% if stats.materials_pending > 0 %}metric--alert{% endif %}">
+            <div class="metric__label">Materiały oczekujące</div>
+            <div class="metric__value">{{ stats.materials_pending }}</div>
+        </div>
+        <div class="metric">
+            <div class="metric__label">Materiały zweryfikowane</div>
+            <div class="metric__value">{{ stats.materials_verified }}</div>
+        </div>
+        <div class="metric {% if stats.reports_open > 0 %}metric--alert{% endif %}">
+            <div class="metric__label">Otwarte zgłoszenia</div>
+            <div class="metric__value">{{ stats.reports_open }}</div>
+        </div>
+        <div class="metric {% if stats.works_pending > 0 %}metric--alert{% endif %}">
+            <div class="metric__label">Prace w trakcie</div>
+            <div class="metric__value">{{ stats.works_pending }}</div>
+        </div>
+    </div>
+
+    <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Szybkie akcje</h2>
+    <div class="reveal reveal-4" style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+        <a href="{% url 'admin_reports_queue' %}" class="btn btn--accent btn--lg">
+            📋 Zgłoszenia ({{ stats.reports_open }})
+        </a>
+        <a href="{% url 'admin_users_list' %}" class="btn btn--lg">
+            👥 Użytkownicy
+        </a>
+        <a href="{% url 'moderator_materials_queue' %}" class="btn btn--lg">
+            📄 Kolejka moderacji
+        </a>
+        <a href="{% url 'moderator_works_queue' %}" class="btn btn--lg">
+            ✍ Prace do sprawdzenia
+        </a>
+    </div>
+</div>
+{% endblock %}

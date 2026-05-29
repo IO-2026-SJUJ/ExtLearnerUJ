@@ -1,0 +1,68 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Zgłoszenia — admin{% endblock %}
+
+{% block extra_head %}
+<style>
+    .report-card {
+        padding: var(--sp-4) var(--sp-5);
+        border: var(--border-hair);
+        margin-bottom: var(--sp-3);
+        display: grid;
+        grid-template-columns: 100px 1fr auto;
+        gap: var(--sp-4);
+        align-items: start;
+    }
+    .report-card__type {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-accent);
+        padding-top: 2px;
+    }
+    .report-card__reason {
+        line-height: 1.5;
+        margin-bottom: var(--sp-2);
+    }
+    .report-card__meta {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-ink-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Admin · zgłoszenia</p>
+    <h1 class="reveal reveal-2">Do <em style="font-style: italic; color: var(--color-accent);">rozpatrzenia</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Kliknij zgłoszenie, aby zobaczyć szczegóły i zdecydować.
+    </p>
+
+    {% if reports %}
+        <div class="reveal reveal-4">
+            {% for r in reports %}
+                <a href="{% url 'admin_review_report' r.id %}" class="report-card" style="text-decoration: none; color: inherit;">
+                    <span class="report-card__type">{{ r.get_targetType_display }}</span>
+                    <div>
+                        <p class="report-card__reason">{{ r.reason|truncatewords:30 }}</p>
+                        <div class="report-card__meta">
+                            Zgłosił: {{ r.reporterId }}
+                            &nbsp;·&nbsp; {{ r.createdAt|date:"j.m.Y H:i" }}
+                            &nbsp;·&nbsp; Target ID: {{ r.targetId }}
+                        </div>
+                    </div>
+                    <span class="btn">Rozpatrz →</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-4">
+            <div class="empty-state__icon">✓</div>
+            <p>Brak zgłoszeń. Wszystko pod kontrolą.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Powiadomienia — ExtLearnerUJ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .notif {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--sp-4);
+        padding: var(--sp-4) var(--sp-5);
+        border-bottom: var(--border-soft);
+        transition: background 0.15s ease;
+    }
+    .notif:hover { background: var(--color-paper-dark); }
+    .notif--unread {
+        background: var(--color-accent-soft);
+        border-left: 3px solid var(--color-accent);
+        padding-left: calc(var(--sp-5) - 3px);
+    }
+    .notif__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-accent);
+        margin-top: 8px;
+        flex-shrink: 0;
+    }
+    .notif__dot--read {
+        background: transparent;
+        border: 1px solid var(--color-ink-muted);
+    }
+    .notif__body { flex: 1; }
+    .notif__msg {
+        font-size: var(--fs-base);
+        margin-bottom: var(--sp-1);
+    }
+    .notif__time {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-ink-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow reveal reveal-1">§ Powiadomienia</p>
+    <h1 class="reveal reveal-2">Co się <em style="font-style: italic; color: var(--color-accent);">wydarzyło</em>.</h1>
+
+    {% if notifications %}
+        <div class="reveal reveal-3" style="border: var(--border-hair); margin-top: var(--sp-6);">
+            {% for n in notifications %}
+                <div class="notif {% if not n.isRead %}notif--unread{% endif %}"
+                     data-id="{{ n.id }}">
+                    <span class="notif__dot {% if n.isRead %}notif__dot--read{% endif %}"></span>
+                    <div class="notif__body">
+                        <p class="notif__msg">{{ n.message }}</p>
+                        <span class="notif__time">{{ n.createdAt|date:"j F, H:i" }}</span>
+                    </div>
+                    {% if not n.isRead %}
+                        <button type="button"
+                                class="btn btn--ghost"
+                                data-mark-read="{{ n.id }}"
+                                style="font-size: var(--fs-xs);">
+                            Oznacz jako przeczytane
+                        </button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state" style="margin-top: var(--sp-6);">
+            <div class="empty-state__icon">∅</div>
+            <p>Brak powiadomień. Wróć później.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // AJAX oznaczania jako przeczytane
+    document.querySelectorAll('[data-mark-read]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.markRead;
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+            try {
+                const resp = await fetch(`/notifications/${id}/read/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf ? csrf.value : '{{ csrf_token }}',
+                    },
+                });
+                if (resp.ok) {
+                    const notif = document.querySelector(`.notif[data-id="${id}"]`);
+                    if (notif) {
+                        notif.classList.remove('notif--unread');
+                        btn.remove();
+                    }
+                }
+            } catch (e) {
+                console.error('Mark as read failed:', e);
+            }
+        });
+    });
+</script>
+{# Ukryty formularz na CSRF token (bo szablon nie ma formularza) #}
+<form style="display:none">{% csrf_token %}</form>
+{% endblock %}

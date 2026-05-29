@@ -1,0 +1,50 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Moje prace — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Moje prace pisemne</p>
+    <div class="reveal reveal-2" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--sp-4);">
+        <h1 style="margin: 0;">Twoje <em style="font-style: italic; color: var(--color-accent);">zamówienia</em>.</h1>
+        <a href="{% url 'work_new' %}" class="btn btn--accent">+ Wyślij nową pracę</a>
+    </div>
+
+    {% if works %}
+        <div class="reveal reveal-3" style="margin-top: var(--sp-6); border: var(--border-hair);">
+            {% for w in works %}
+                <a href="{% url 'work_detail' w.id %}"
+                   style="display: flex; justify-content: space-between; align-items: center; padding: var(--sp-4) var(--sp-5); border-bottom: var(--border-soft); text-decoration: none; color: inherit; gap: var(--sp-4);">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-family: var(--font-display); font-weight: 600; font-size: var(--fs-md); margin-bottom: var(--sp-1);">
+                            {{ w.title }}
+                        </div>
+                        <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                            {{ w.submittedAt|date:"j F Y, H:i" }}
+                        </div>
+                    </div>
+                    <div>
+                        {% if w.status == 'PENDING_PAYMENT' %}
+                            <span class="chip" style="color: var(--color-warning);">⏸ Płatność</span>
+                        {% elif w.status == 'PAID' %}
+                            <span class="chip">W kolejce</span>
+                        {% elif w.status == 'IN_REVIEW' %}
+                            <span class="chip" style="color: var(--color-accent);">✍ Sprawdzane</span>
+                        {% elif w.status == 'REVIEWED' %}
+                            <span class="chip chip--verified">✓ Gotowe</span>
+                        {% endif %}
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-3" style="margin-top: var(--sp-6);">
+            <div class="empty-state__icon">?</div>
+            <p>Nie wysłałeś jeszcze żadnej pracy.</p>
+            <a href="{% url 'work_new' %}" class="btn btn--accent" style="margin-top: var(--sp-3);">
+                Wyślij pierwszą pracę
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

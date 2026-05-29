@@ -67,4 +67,17 @@ class ReportGenerator:
 
 
 class PaymentGateway:
+<<<<<<< HEAD
     def charge(self, amount): return False
+=======
+    """MOCK bramki płatności.
+    W Sprincie 2 zawsze zwraca sukces — symulujemy prawdziwą integrację.
+    W Sprincie 3 / produkcji: integracja z Przelewy24 / Stripe."""
+
+    def charge(self, amount: float) -> bool:
+        if amount <= 0:
+            return False
+        # W prawdziwej bramce byłby tu request do API dostawcy płatności.
+        # Dla celów demo: zawsze sukces.
+        return True
+>>>>>>> sprint-2

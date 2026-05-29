@@ -21,8 +21,11 @@ from django.core.mail import send_mail
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import models
 from django.utils import timezone
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> sprint-2
 # ============================================================
 # Helpery — callable defaulty (fix bugu z poprzedniej wersji)
 # ============================================================
@@ -158,6 +161,7 @@ class User(models.Model):
     # Zgłoszenia (Sprint 2)
     # -------------------------
     def submitReport(self, targetType: str, targetId: str, reason: str):
+<<<<<<< HEAD
         report = Report(
             reporterId=self.email,
             targetType=targetType,
@@ -165,6 +169,17 @@ class User(models.Model):
             reason=reason,
         )
         report.submit()
+=======
+        """Składa zgłoszenie o nadużyciu (FR-13, UC25).
+        targetType: 'MATERIAL'|'USER'|'COMMENT'"""
+        report = Report.objects.create(
+            reporterId=self.email,
+            targetType=targetType,
+            targetId=str(targetId),
+            reason=reason,
+            status='PENDING',
+        )
+>>>>>>> sprint-2
         return report
 
 
@@ -200,10 +215,50 @@ class Student(User):
         return None
 
     def voteMaterial(self, materialId):
+<<<<<<< HEAD
         return None
 
     def submitWork(self, workData, packageId, files):
         return None
+=======
+        """Oddaje głos na materiał (zwiększa jego priorytet).
+        Idempotentne — drugi głos tego samego usera nic nie robi (FR-09)."""
+        try:
+            material = Material.objects.get(pk=materialId)
+        except Material.DoesNotExist:
+            return None
+        vote, created = Vote.objects.get_or_create(
+            userId=self.email, materialId=str(materialId),
+        )
+        if created:
+            material.increasePriority()
+        return vote
+
+    def submitWork(self, workData: dict, packageId, files=None):
+        """Przesyła pracę pisemną do sprawdzenia (FR-15, UC19).
+        Tworzy Work w statusie PENDING_PAYMENT — po udanej płatności
+        przechodzi w PAID i trafia do kolejki moderatora."""
+        try:
+            package = Package.objects.get(pk=packageId)
+        except Package.DoesNotExist:
+            return None
+
+        work = Work.objects.create(
+            title=workData.get('title', ''),
+            description=workData.get('description', ''),
+            studentId=self.email,
+            packageId=str(package.id),
+            status=Work.STATUS_PENDING_PAYMENT,
+        )
+        # Upload plików — jeśli są
+        if files:
+            for f in files:
+                att = FileAttachment()
+                if att.upload(f):
+                    att.work = work
+                    att.save()
+        return work
+>>>>>>> sprint-2
 
     def viewStats(self):
         pass
@@ -220,6 +275,7 @@ class Student(User):
 
 
 class Moderator(User):
+<<<<<<< HEAD
     # Implementacja w Sprincie 2
     def viewMaterialsToVerify(self): return []
     def verifyMaterial(self, materialId, decision, comment): return None
@@ -227,10 +283,115 @@ class Moderator(User):
     def viewWorksToCheck(self): return []
     def reserveWork(self, workId): return False
     def checkWork(self, workId, reviewData): return None
+=======
+    def viewMaterialsToVerify(self):
+        """Zwraca listę materiałów do weryfikacji, posortowaną po priorytecie
+        malejąco (najbardziej oczekiwane najpierw — UC36)."""
+        return list(
+            Material.objects.filter(status=Material.STATUS_PENDING)
+            .order_by('-priority', 'createdAt')
+        )
+
+    def verifyMaterial(self, materialId, decision, comment=''):
+        """Weryfikuje materiał. decision: 'ACCEPTED'|'REJECTED'|'NEEDS_REVISION'.
+        Tworzy MaterialVerification, zmienia status materiału,
+        wysyła Notification do autora (UC31 + UC32)."""
+        try:
+            material = Material.objects.get(pk=materialId)
+        except Material.DoesNotExist:
+            return None
+
+        verification = MaterialVerification.objects.create(
+            materialId=str(materialId),
+            moderatorId=self.email,
+            decision=decision,
+        )
+
+        if decision == 'ACCEPTED':
+            material.status = Material.STATUS_VERIFIED
+            material.isVerified = True
+        elif decision == 'REJECTED':
+            material.status = Material.STATUS_REJECTED
+            material.isVerified = False
+        # NEEDS_REVISION zostawia status=PENDING, tylko dodaje komentarz
+        material.save(update_fields=['status', 'isVerified'])
+
+        # Powiadomienie dla autora (UC32)
+        msg_map = {
+            'ACCEPTED': f'Twój materiał "{material.title}" został zaakceptowany ✓',
+            'REJECTED': f'Twój materiał "{material.title}" został odrzucony',
+            'NEEDS_REVISION': f'Twój materiał "{material.title}" wymaga poprawy',
+        }
+        notification = Notification.objects.create(
+            userId=material.authorId,
+            message=msg_map.get(decision, f'Status materiału "{material.title}" się zmienił'),
+        )
+        if comment:
+            Comment.objects.create(
+                authorId=self.email,
+                targetType='MATERIAL',
+                targetId=str(materialId),
+                text=comment,
+            )
+
+        return verification
+
+    def editMaterialTests(self, materialId, newQuestions): return False
+    def viewWorksToCheck(self):
+        """Lista prac opłaconych, czekających na moderatora.
+        Pomija prace zarezerwowane przez innych moderatorów."""
+        return list(
+            Work.objects.filter(
+                status__in=[Work.STATUS_PAID, Work.STATUS_IN_REVIEW],
+            ).filter(
+                # Niezarezerwowane LUB zarezerwowane przeze mnie
+                models.Q(assignedModeratorId__isnull=True)
+                | models.Q(assignedModeratorId='')
+                | models.Q(assignedModeratorId=self.email)
+            ).order_by('submittedAt')
+        )
+
+    def reserveWork(self, workId):
+        """Rezerwuje pracę do sprawdzenia (UC39). Idempotentne —
+        jeśli moderator już ją miał, zwraca True."""
+        try:
+            work = Work.objects.get(pk=workId)
+        except Work.DoesNotExist:
+            return False
+
+        # Czy ktoś inny nie zarezerwował wcześniej?
+        if work.assignedModeratorId and work.assignedModeratorId != self.email:
+            return False
+
+        work.assignedModeratorId = self.email
+        work.status = Work.STATUS_IN_REVIEW
+        work.save(update_fields=['assignedModeratorId', 'status'])
+        return True
+
+    def checkWork(self, workId, reviewData: dict):
+        """Tworzy WorkReview (szkic) lub zwraca istniejący (UC40)."""
+        try:
+            work = Work.objects.get(pk=workId, assignedModeratorId=self.email)
+        except Work.DoesNotExist:
+            return None
+
+        review, _ = WorkReview.objects.get_or_create(
+            workId=str(workId),
+            moderatorId=self.email,
+            defaults={
+                'grade': reviewData.get('grade', ''),
+                'generalComment': reviewData.get('generalComment', ''),
+                'status': WorkReview.STATUS_DRAFT,
+            },
+        )
+        return review
+
+>>>>>>> sprint-2
     def viewModeratorStats(self): pass
 
 
 class Admin(User):
+<<<<<<< HEAD
     # Implementacja w Sprincie 2/3
     def viewSystemStats(self): return {}
     def reviewModeratorApplications(self): return []
@@ -239,6 +400,91 @@ class Admin(User):
     def handleUserReports(self): return []
     def reviewReport(self, reportId, decision): return False
     def manageUserAccount(self, userId, newStatus, newRole): pass
+=======
+    def viewSystemStats(self):
+        """Statystyki dla dashboardu admina."""
+        return {
+            'total_users': User.objects.count(),
+            'total_students': Student.objects.count(),
+            'total_moderators': Moderator.objects.count(),
+            'total_admins': Admin.objects.count(),
+            'materials_pending': Material.objects.filter(
+                status=Material.STATUS_PENDING
+            ).count(),
+            'materials_verified': Material.objects.filter(isVerified=True).count(),
+            'reports_open': Report.objects.filter(
+                status=Report.STATUS_PENDING
+            ).count(),
+            'works_pending': Work.objects.filter(
+                status__in=[Work.STATUS_PAID, Work.STATUS_IN_REVIEW]
+            ).count(),
+        }
+
+    def reviewModeratorApplications(self):
+        return list(ModeratorApplication.objects.filter(status='PENDING'))
+
+    def acceptCandidate(self, applicationId): return False
+    def rejectCandidate(self, applicationId, reason): return False
+
+    def handleUserReports(self):
+        """Lista nierozpatrzonych zgłoszeń."""
+        return list(Report.objects.filter(status=Report.STATUS_PENDING))
+
+    def reviewReport(self, reportId, decision, comment=''):
+        """Rozpatrzenie zgłoszenia (UC47). decision: RESOLVED | DISMISSED."""
+        try:
+            report = Report.objects.get(pk=reportId)
+        except Report.DoesNotExist:
+            return False
+
+        report.review(decision, admin_email=self.email)
+
+        # Powiadomienie dla zgłaszającego
+        msg_map = {
+            Report.STATUS_RESOLVED: (
+                'Twoje zgłoszenie zostało uznane za zasadne. '
+                'Dziękujemy za dbanie o jakość platformy.'
+            ),
+            Report.STATUS_DISMISSED: (
+                'Po rozpatrzeniu Twoje zgłoszenie zostało odrzucone. '
+                'Materiał nie narusza regulaminu.'
+            ),
+        }
+        Notification.objects.create(
+            userId=report.reporterId,
+            message=msg_map.get(decision, 'Twoje zgłoszenie zostało rozpatrzone.'),
+        )
+        return True
+
+    def manageUserAccount(self, userId, newStatus, days=None):
+        """Blokada/odblokowanie konta (FR-11, UC48).
+        userId jest emailem usera. days=N oznacza blokadę tymczasową."""
+        try:
+            target = User.objects.get(email=userId)
+        except User.DoesNotExist:
+            return False
+
+        target.status = newStatus
+        target.save(update_fields=['status'])
+
+        # Powiadomienie dla usera
+        if newStatus == User.STATUS_BLOCKED:
+            msg = (f'Twoje konto zostało zablokowane na {days} dni.'
+                   if days else 'Twoje konto zostało zablokowane.')
+            msg += ' Powód: naruszenie regulaminu. W razie pytań skontaktuj się z administracją.'
+        elif newStatus == User.STATUS_ACTIVE:
+            msg = 'Twoje konto zostało odblokowane. Witamy z powrotem.'
+        else:
+            msg = f'Status Twojego konta zmieniony na: {newStatus}.'
+
+        Notification.objects.create(userId=target.email, message=msg)
+
+        # Zablokowany user = wylogowanie wszystkich sesji
+        if newStatus != User.STATUS_ACTIVE:
+            Session.objects.filter(userId=target.email).delete()
+
+        return True
+>>>>>>> sprint-2
 
 
 # ============================================================
@@ -362,6 +608,16 @@ class FileAttachment(models.Model):
         blank=True,
         related_name='attachments',
     )
+<<<<<<< HEAD
+=======
+    work = models.ForeignKey(
+        'Work',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='attachments',
+    )
+>>>>>>> sprint-2
 
     def upload(self, fileStream) -> bool:
         try:
@@ -473,6 +729,7 @@ class Vote(models.Model):
     materialId = models.CharField(max_length=255)
     votedAt = models.DateTimeField(auto_now_add=True)
 
+<<<<<<< HEAD
 
 class Notification(models.Model):
     userId = models.CharField(max_length=255)
@@ -496,12 +753,93 @@ class Work(models.Model):
     @classmethod
     def submit(cls, files, packageId): return None
     def assignModerator(self, moderatorId): return False
+=======
+    class Meta:
+        # Jeden user nie może oddać dwóch głosów na ten sam materiał (FR-09)
+        unique_together = [('userId', 'materialId')]
+        indexes = [models.Index(fields=['materialId'])]
+
+
+class Notification(models.Model):
+    userId = models.CharField(max_length=255, db_index=True)
+    message = models.TextField()
+    link = models.CharField(max_length=500, blank=True)  # URL dokąd ma prowadzić klik
+    isRead = models.BooleanField(default=False)
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+
+    def send(self):
+        """Alias dla save() — trzyma kontrakt z classDiagram.md."""
+        self.save()
+
+    def markAsRead(self):
+        self.isRead = True
+        self.save(update_fields=['isRead'])
+
+
+class Work(models.Model):
+    STATUS_PENDING_PAYMENT = 'PENDING_PAYMENT'
+    STATUS_PAID = 'PAID'              # Zapłacone, czeka na moderatora
+    STATUS_IN_REVIEW = 'IN_REVIEW'    # Moderator ją zarezerwował
+    STATUS_REVIEWED = 'REVIEWED'      # Moderator wystawił ocenę (PUBLISHED)
+    STATUS_CANCELLED = 'CANCELLED'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING_PAYMENT, 'Oczekuje na płatność'),
+        (STATUS_PAID, 'Opłacone — w kolejce'),
+        (STATUS_IN_REVIEW, 'W trakcie sprawdzania'),
+        (STATUS_REVIEWED, 'Sprawdzone'),
+        (STATUS_CANCELLED, 'Anulowane'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    studentId = models.CharField(max_length=255, db_index=True)
+    packageId = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING_PAYMENT,
+    )
+    assignedModeratorId = models.CharField(max_length=255, null=True, blank=True)
+    submittedAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submittedAt']
+        indexes = [models.Index(fields=['status', 'submittedAt'])]
+
+    @classmethod
+    def submit(cls, files, packageId, studentId='', title='', description=''):
+        """Kompatybilność z sygnaturą z classDiagram.md, ale w praktyce
+        używamy Student.submitWork()."""
+        work = cls.objects.create(
+            title=title, description=description,
+            studentId=studentId, packageId=str(packageId),
+            status=cls.STATUS_PENDING_PAYMENT,
+        )
+        if files:
+            for f in files:
+                att = FileAttachment()
+                if att.upload(f):
+                    att.work = work
+                    att.save()
+        return work
+
+    def assignModerator(self, moderatorId):
+        if self.assignedModeratorId and self.assignedModeratorId != moderatorId:
+            return False
+        self.assignedModeratorId = moderatorId
+        self.status = self.STATUS_IN_REVIEW
+        self.save(update_fields=['assignedModeratorId', 'status'])
+        return True
+>>>>>>> sprint-2
 
 
 class Package(models.Model):
     name = models.CharField(max_length=255)
     price = models.FloatField(default=0.0)
     scope = models.CharField(max_length=255, blank=True)
+<<<<<<< HEAD
 
     def select(self): return self
 
@@ -528,10 +866,122 @@ class WorkReview(models.Model):
     def publish(self):
         self.status = 'PUBLISHED'
         self.save()
+=======
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['price']
+
+    def __str__(self):
+        return f'{self.name} ({self.price} zł)'
+
+    def select(self):
+        return self
+
+
+class PaymentTransaction(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_PROCESSING = 'PROCESSING'
+    STATUS_COMPLETED = 'COMPLETED'
+    STATUS_FAILED = 'FAILED'
+
+    METHOD_BLIK = 'BLIK'
+    METHOD_CARD = 'CARD'
+    METHOD_TRANSFER = 'TRANSFER'
+
+    workId = models.CharField(max_length=255, db_index=True)
+    userId = models.CharField(max_length=255)
+    amount = models.FloatField(default=0.0)
+    status = models.CharField(max_length=50, default=STATUS_PENDING)
+    method = models.CharField(max_length=50, blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    completedAt = models.DateTimeField(null=True, blank=True)
+
+    def process(self):
+        """MOCK BRAMKI PŁATNOŚCI.
+        W Sprincie 2 zawsze zwraca sukces. W produkcji integracja z Przelewy24.
+        Zwraca True przy sukcesie."""
+        from .services import PaymentGateway
+        gateway = PaymentGateway()
+        self.status = self.STATUS_PROCESSING
+        self.save(update_fields=['status'])
+
+        success = gateway.charge(self.amount)
+        if success:
+            self.status = self.STATUS_COMPLETED
+            self.completedAt = timezone.now()
+            self.save(update_fields=['status', 'completedAt'])
+
+            # Przejście Work w status PAID
+            try:
+                work = Work.objects.get(pk=self.workId)
+                work.status = Work.STATUS_PAID
+                work.save(update_fields=['status'])
+            except Work.DoesNotExist:
+                pass
+            return True
+        else:
+            self.status = self.STATUS_FAILED
+            self.save(update_fields=['status'])
+            return False
+
+
+class WorkReview(models.Model):
+    STATUS_DRAFT = 'DRAFT'
+    STATUS_PUBLISHED = 'PUBLISHED'
+
+    workId = models.CharField(max_length=255, db_index=True)
+    moderatorId = models.CharField(max_length=255)
+    grade = models.CharField(max_length=50, blank=True)  # A1-C2
+    generalComment = models.TextField(blank=True)
+    status = models.CharField(max_length=50, default=STATUS_DRAFT)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    publishedAt = models.DateTimeField(null=True, blank=True)
+
+    def addErrorMark(self, textSnippet, mark_type, positionInText=''):
+        mark = ErrorMark.objects.create(
+            reviewId=str(self.id),
+            textSnippet=textSnippet,
+            type=mark_type,
+            positionInText=positionInText,
+        )
+        return mark
+
+    def addComment(self, text, authorId):
+        return Comment.objects.create(
+            authorId=authorId,
+            targetType='WORK_REVIEW',
+            targetId=str(self.id),
+            text=text,
+        )
+
+    def publish(self):
+        """Publikuje ocenę — student dostaje notyfikację, Work → REVIEWED."""
+        self.status = self.STATUS_PUBLISHED
+        self.publishedAt = timezone.now()
+        self.save(update_fields=['status', 'publishedAt'])
+
+        try:
+            work = Work.objects.get(pk=self.workId)
+            work.status = Work.STATUS_REVIEWED
+            work.save(update_fields=['status'])
+
+            Notification.objects.create(
+                userId=work.studentId,
+                message=(
+                    f'Twoja praca "{work.title}" została sprawdzona. '
+                    f'Ocena: {self.grade or "—"}. Zobacz szczegóły.'
+                ),
+                link=f'/works/{work.id}/review/',
+            )
+        except Work.DoesNotExist:
+            pass
+>>>>>>> sprint-2
         return True
 
 
 class ErrorMark(models.Model):
+<<<<<<< HEAD
     reviewId = models.CharField(max_length=255)
     textSnippet = models.TextField()
     type = models.CharField(max_length=50)
@@ -545,6 +995,51 @@ class MaterialVerification(models.Model):
 
     def submit(self, decision, comment):
         self.decision = decision
+=======
+    TYPE_GRAMMAR = 'GRAMMAR'      # czerwone
+    TYPE_UNNATURAL = 'UNNATURAL'  # żółte
+    TYPE_POSITIVE = 'POSITIVE'    # zielone
+
+    TYPE_CHOICES = [
+        (TYPE_GRAMMAR, 'Błąd gramatyczny'),
+        (TYPE_UNNATURAL, 'Nienaturalne sformułowanie'),
+        (TYPE_POSITIVE, 'Dobre sformułowanie'),
+    ]
+
+    reviewId = models.CharField(max_length=255, db_index=True)
+    textSnippet = models.TextField()
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES)
+    positionInText = models.CharField(max_length=255, blank=True)
+    comment = models.TextField(blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['createdAt']
+
+
+class MaterialVerification(models.Model):
+    DECISION_ACCEPTED = 'ACCEPTED'
+    DECISION_REJECTED = 'REJECTED'
+    DECISION_NEEDS_REVISION = 'NEEDS_REVISION'
+    DECISION_CHOICES = [
+        (DECISION_ACCEPTED, 'Zaakceptowany'),
+        (DECISION_REJECTED, 'Odrzucony'),
+        (DECISION_NEEDS_REVISION, 'Do poprawy'),
+    ]
+
+    materialId = models.CharField(max_length=255, db_index=True)
+    moderatorId = models.CharField(max_length=255)
+    decision = models.CharField(max_length=50, choices=DECISION_CHOICES, blank=True)
+    comment = models.TextField(blank=True)
+    verifiedAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-verifiedAt']
+
+    def submit(self, decision, comment=''):
+        self.decision = decision
+        self.comment = comment
+>>>>>>> sprint-2
         self.save()
         return True
 
@@ -559,22 +1054,80 @@ class ModeratorApplication(models.Model):
 
 
 class Report(models.Model):
+<<<<<<< HEAD
     reporterId = models.CharField(max_length=255)
     targetType = models.CharField(max_length=50)
     targetId = models.CharField(max_length=255)
     reason = models.TextField()
     status = models.CharField(max_length=50, default='PENDING')
+=======
+    TARGET_MATERIAL = 'MATERIAL'
+    TARGET_USER = 'USER'
+    TARGET_COMMENT = 'COMMENT'
+    TARGET_CHOICES = [
+        (TARGET_MATERIAL, 'Materiał'),
+        (TARGET_USER, 'Użytkownik'),
+        (TARGET_COMMENT, 'Komentarz'),
+    ]
+
+    STATUS_PENDING = 'PENDING'
+    STATUS_RESOLVED = 'RESOLVED'
+    STATUS_DISMISSED = 'DISMISSED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Oczekuje'),
+        (STATUS_RESOLVED, 'Rozpatrzone'),
+        (STATUS_DISMISSED, 'Odrzucone'),
+    ]
+
+    reporterId = models.CharField(max_length=255, db_index=True)
+    targetType = models.CharField(max_length=50, choices=TARGET_CHOICES)
+    targetId = models.CharField(max_length=255, db_index=True)
+    reason = models.TextField()
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    resolvedAt = models.DateTimeField(null=True, blank=True)
+    resolvedBy = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+        indexes = [models.Index(fields=['status', 'createdAt'])]
+>>>>>>> sprint-2
 
     def submit(self):
         self.save()
         return True
 
+<<<<<<< HEAD
     def review(self, decision):
         self.status = decision
+=======
+    def review(self, decision, admin_email=''):
+        """decision: 'RESOLVED' (potwierdzone) | 'DISMISSED' (odrzucone)."""
+        self.status = decision
+        self.resolvedAt = timezone.now()
+        self.resolvedBy = admin_email
+>>>>>>> sprint-2
         self.save()
         return True
 
 
+<<<<<<< HEAD
+=======
+# ============================================================
+# Comment — dodajemy w Sprincie 2 (było w classDiagram.md)
+# ============================================================
+class Comment(models.Model):
+    authorId = models.CharField(max_length=255)
+    targetType = models.CharField(max_length=50)  # MATERIAL / WORK / etc.
+    targetId = models.CharField(max_length=255, db_index=True)
+    text = models.TextField()
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-createdAt']
+
+
+>>>>>>> sprint-2
 class Statistics(models.Model):
     """Placeholder — rozbudowa w Sprincie 3."""
     pass

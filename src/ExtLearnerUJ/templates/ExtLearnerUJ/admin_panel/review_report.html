@@ -1,0 +1,138 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Rozpatrz zgłoszenie — admin{% endblock %}
+
+{% block extra_head %}
+<style>
+    .review-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: var(--sp-5);
+        align-items: start;
+    }
+    @media (max-width: 960px) {
+        .review-layout { grid-template-columns: 1fr; }
+    }
+    .report-detail {
+        padding: var(--sp-5);
+        border: var(--border-hair);
+        background: var(--color-paper);
+    }
+    .target-preview {
+        margin-top: var(--sp-5);
+        padding: var(--sp-4);
+        background: var(--color-paper-dark);
+        border-left: 3px solid var(--color-ink-muted);
+    }
+    .decision-radio {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-4);
+        list-style: none;
+        padding: 0;
+    }
+    .decision-radio label {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        border: var(--border-hair);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .decision-radio li:has(input:checked) label {
+        background: var(--color-accent-soft);
+        border-color: var(--color-accent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Admin · rozpatrywanie zgłoszenia</p>
+    <h1 class="reveal reveal-2">Zgłoszenie #{{ report.id }}</h1>
+    <div class="reveal reveal-3" style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin-bottom: var(--sp-5);">
+        {{ report.get_targetType_display }}
+        &nbsp;·&nbsp; Zgłoszone przez: {{ report.reporterId }}
+        &nbsp;·&nbsp; {{ report.createdAt|date:"j F Y, H:i" }}
+    </div>
+
+    <div class="review-layout reveal reveal-4">
+        <div class="report-detail">
+            <h2 style="font-size: var(--fs-md); margin-top: 0;">Treść zgłoszenia</h2>
+            <div style="font-size: var(--fs-base); line-height: 1.6; white-space: pre-wrap;">{{ report.reason }}</div>
+
+            {% if target %}
+                <div class="target-preview">
+                    <h3 style="font-size: var(--fs-sm); margin: 0 0 var(--sp-3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-ink-muted);">
+                        Obiekt zgłoszenia
+                    </h3>
+                    {% if report.targetType == 'MATERIAL' %}
+                        <strong>{{ target.title }}</strong>
+                        <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted); margin-top: var(--sp-2);">
+                            Kategoria: {{ target.category|default:"—" }}
+                            &nbsp;·&nbsp; Autor: {{ target.authorId }}
+                        </div>
+                        <div style="margin-top: var(--sp-3); font-size: var(--fs-sm); line-height: 1.5;">
+                            {{ target.content|truncatewords:50 }}
+                        </div>
+                        <a href="{% url 'material_detail' target.id %}" target="_blank"
+                           class="mono" style="display: inline-block; margin-top: var(--sp-3); font-size: var(--fs-xs);">
+                            → Zobacz pełny materiał
+                        </a>
+                    {% elif report.targetType == 'USER' %}
+                        <strong>{{ target.name }}</strong>
+                        <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted); margin-top: var(--sp-2);">
+                            {{ target.email }} &nbsp;·&nbsp; Status: {{ target.status }}
+                        </div>
+                        <a href="{% url 'admin_user_detail' target.email %}"
+                           class="mono" style="display: inline-block; margin-top: var(--sp-3); font-size: var(--fs-xs);">
+                            → Profil użytkownika
+                        </a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="target-preview">
+                    <em style="color: var(--color-ink-muted); font-style: italic;">
+                        Obiekt zgłoszenia został usunięty lub nie istnieje (ID: {{ report.targetId }}).
+                    </em>
+                </div>
+            {% endif %}
+        </div>
+
+        <aside style="position: sticky; top: 90px; border: 2px solid var(--color-ink); padding: var(--sp-5); background: var(--color-paper);">
+            <h2 style="font-size: var(--fs-md); margin-top: 0; margin-bottom: var(--sp-4);">
+                Decyzja
+            </h2>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="message message--error">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <ul class="decision-radio">
+                    {% for radio in form.decision %}
+                        <li>{{ radio }}</li>
+                    {% endfor %}
+                </ul>
+
+                <div class="form-field" style="margin-bottom: var(--sp-4);">
+                    <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+                    {{ form.comment }}
+                </div>
+
+                <button type="submit" class="btn btn--accent btn--block">Zapisz decyzję</button>
+                <a href="{% url 'admin_reports_queue' %}"
+                   class="btn btn--ghost btn--block" style="margin-top: var(--sp-2);">
+                    ← Wróć
+                </a>
+            </form>
+        </aside>
+    </div>
+</div>
+{% endblock %}

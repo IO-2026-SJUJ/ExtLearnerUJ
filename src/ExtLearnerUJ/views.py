@@ -18,10 +18,23 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_POST
 
 from .decorators import session_login_required, anonymous_required, role_required
+<<<<<<< HEAD
 from .forms import RegisterForm, LoginForm, VerifyEmailForm
 from .models import (
     User, Student, Session, EmailVerificationToken,
     Material, DiagnosticTest, DiagnosticResult,
+=======
+from .forms import (
+    RegisterForm, LoginForm, VerifyEmailForm,
+    MaterialForm, ReportForm, VerifyMaterialForm,
+    WorkForm, WorkReviewForm, AdminBlockUserForm, ReviewReportForm,
+)
+from .models import (
+    User, Student, Moderator, Admin, Session, EmailVerificationToken,
+    Material, DiagnosticTest, DiagnosticResult,
+    Vote, Notification, MaterialVerification, Report, Comment,
+    Work, Package, PaymentTransaction, WorkReview, ErrorMark, FileAttachment,
+>>>>>>> sprint-2
 )
 from .services import GradingService
 
@@ -310,13 +323,636 @@ def materials_list(request):
 @session_login_required
 def material_detail(request, material_id):
     material = get_object_or_404(Material, pk=material_id)
+<<<<<<< HEAD
     return render(request, 'ExtLearnerUJ/materials/detail.html', {
         'material': material,
+=======
+    # Czy aktualny user już głosował?
+    user_voted = Vote.objects.filter(
+        userId=request.app_user.email, materialId=str(material_id)
+    ).exists()
+    vote_count = Vote.objects.filter(materialId=str(material_id)).count()
+    return render(request, 'ExtLearnerUJ/materials/detail.html', {
+        'material': material,
+        'user_voted': user_voted,
+        'vote_count': vote_count,
+>>>>>>> sprint-2
     })
 
 
 # ============================================================
+<<<<<<< HEAD
+=======
+# Sprint 2 — dodawanie materiałów (FR-08)
+# ============================================================
+@session_login_required
+@role_required(Student)
+def material_create(request):
+    """Student dodaje własny materiał. Materiał ląduje ze statusem PENDING
+    i czeka na weryfikację moderatora (UC16)."""
+    if request.method == 'POST':
+        form = MaterialForm(request.POST, request.FILES)
+        if form.is_valid():
+            files = []
+            if form.cleaned_data.get('attachment'):
+                files = [form.cleaned_data['attachment']]
+            material = Material.create(
+                data={
+                    'title': form.cleaned_data['title'],
+                    'content': form.cleaned_data['content'],
+                    'authorId': request.app_user.email,
+                    'category': form.cleaned_data['category'],
+                },
+                files=files,
+            )
+            messages.success(
+                request,
+                'Materiał dodany. Czeka na weryfikację przez moderatora.',
+            )
+            return redirect('material_detail', material_id=material.id)
+    else:
+        form = MaterialForm()
+
+    return render(request, 'ExtLearnerUJ/materials/new.html', {'form': form})
+
+
+# ============================================================
+# Sprint 2 — głosowanie (FR-09)
+# ============================================================
+@require_POST
+@session_login_required
+def material_vote(request, material_id):
+    """AJAX endpoint — oddaje głos na materiał.
+    Idempotentny: drugi raz nic nie robi.
+    Zwraca JSON z aktualnym priorytetem i informacją czy user już głosował."""
+    if not isinstance(request.app_user, Student):
+        return JsonResponse({'error': 'Tylko studenci mogą głosować'}, status=403)
+
+    vote = request.app_user.voteMaterial(material_id)
+    if vote is None:
+        return JsonResponse({'error': 'Materiał nie istnieje'}, status=404)
+
+    material = Material.objects.get(pk=material_id)
+    vote_count = Vote.objects.filter(materialId=str(material_id)).count()
+    return JsonResponse({
+        'ok': True,
+        'priority': material.priority,
+        'voteCount': vote_count,
+        'userVoted': True,
+    })
+
+
+# ============================================================
+# Sprint 2 — zgłaszanie (FR-13, UC25)
+# ============================================================
+@session_login_required
+def report_material(request, material_id):
+    """Student zgłasza materiał z błędami lub spam (FR-13)."""
+    material = get_object_or_404(Material, pk=material_id)
+
+    if request.method == 'POST':
+        form = ReportForm(request.POST)
+        if form.is_valid():
+            request.app_user.submitReport(
+                targetType=Report.TARGET_MATERIAL,
+                targetId=material_id,
+                reason=form.cleaned_data['reason'],
+            )
+            # Powiadomienie dla zgłaszającego — potwierdzenie przyjęcia
+            Notification.objects.create(
+                userId=request.app_user.email,
+                message=(
+                    f'✓ Twoje zgłoszenie materiału "{material.title}" '
+                    f'zostało przyjęte. Administrator rozpatrzy je w ciągu 48h.'
+                ),
+            )
+            messages.success(
+                request,
+                'Zgłoszenie wysłane. Administrator rozpatrzy je w ciągu 48h.',
+            )
+            return redirect('material_detail', material_id=material_id)
+    else:
+        form = ReportForm()
+
+    return render(request, 'ExtLearnerUJ/materials/report.html', {
+        'form': form, 'material': material,
+    })
+
+
+# ============================================================
+# Sprint 2 — panel moderatora (UC36, UC31, UC32, UC33)
+# ============================================================
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_dashboard(request):
+    """Strona startowa panelu moderatora."""
+    pending_count = Material.objects.filter(
+        status=Material.STATUS_PENDING
+    ).count()
+    verified_by_me = MaterialVerification.objects.filter(
+        moderatorId=request.app_user.email,
+    ).count()
+    return render(request, 'ExtLearnerUJ/moderator/dashboard.html', {
+        'pending_count': pending_count,
+        'verified_by_me': verified_by_me,
+    })
+
+
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_materials_queue(request):
+    """Kolejka materiałów do weryfikacji, posortowana po priorytecie (UC36)."""
+    materials = request.app_user.viewMaterialsToVerify() \
+        if isinstance(request.app_user, Moderator) \
+        else list(Material.objects.filter(status=Material.STATUS_PENDING)
+                  .order_by('-priority', 'createdAt'))
+    return render(request, 'ExtLearnerUJ/moderator/materials_queue.html', {
+        'materials': materials,
+    })
+
+
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_verify_material(request, material_id):
+    """Widok weryfikacji pojedynczego materiału (UC31)."""
+    material = get_object_or_404(Material, pk=material_id)
+
+    if request.method == 'POST':
+        form = VerifyMaterialForm(request.POST)
+        if form.is_valid():
+            # Admin może działać jako moderator — ale bezpieczniej przepuścić
+            # przez Moderator method jeśli user jest instancją Moderator.
+            if isinstance(request.app_user, Moderator):
+                request.app_user.verifyMaterial(
+                    materialId=material_id,
+                    decision=form.cleaned_data['decision'],
+                    comment=form.cleaned_data.get('comment', ''),
+                )
+            else:
+                # Admin — wywołujemy logikę przez proxy
+                _admin_verify_material(
+                    admin_email=request.app_user.email,
+                    material=material,
+                    decision=form.cleaned_data['decision'],
+                    comment=form.cleaned_data.get('comment', ''),
+                )
+            messages.success(request, 'Decyzja zapisana.')
+            return redirect('moderator_materials_queue')
+    else:
+        form = VerifyMaterialForm()
+
+    return render(request, 'ExtLearnerUJ/moderator/verify_material.html', {
+        'material': material, 'form': form,
+    })
+
+
+def _admin_verify_material(admin_email, material, decision, comment):
+    """Pomocnik — admin działa jak moderator."""
+    verification = MaterialVerification.objects.create(
+        materialId=str(material.id),
+        moderatorId=admin_email,
+        decision=decision,
+        comment=comment,
+    )
+    if decision == MaterialVerification.DECISION_ACCEPTED:
+        material.status = Material.STATUS_VERIFIED
+        material.isVerified = True
+    elif decision == MaterialVerification.DECISION_REJECTED:
+        material.status = Material.STATUS_REJECTED
+        material.isVerified = False
+    material.save(update_fields=['status', 'isVerified'])
+
+    msg_map = {
+        'ACCEPTED': f'Twój materiał "{material.title}" został zaakceptowany ✓',
+        'REJECTED': f'Twój materiał "{material.title}" został odrzucony',
+        'NEEDS_REVISION': f'Twój materiał "{material.title}" wymaga poprawy',
+    }
+    Notification.objects.create(
+        userId=material.authorId,
+        message=msg_map.get(decision, ''),
+    )
+    if comment:
+        Comment.objects.create(
+            authorId=admin_email,
+            targetType='MATERIAL',
+            targetId=str(material.id),
+            text=comment,
+        )
+    return verification
+
+
+# ============================================================
+# Sprint 2 — notyfikacje (UC32)
+# ============================================================
+@session_login_required
+def notifications_list(request):
+    notifications = Notification.objects.filter(userId=request.app_user.email)
+    return render(request, 'ExtLearnerUJ/notifications/list.html', {
+        'notifications': notifications,
+    })
+
+
+@require_POST
+@session_login_required
+def notification_mark_read(request, notification_id):
+    try:
+        n = Notification.objects.get(pk=notification_id, userId=request.app_user.email)
+    except Notification.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+    n.markAsRead()
+    return JsonResponse({'ok': True})
+
+
+# ============================================================
+>>>>>>> sprint-2
 # Healthcheck (przydaje się w CI)
 # ============================================================
 def healthcheck(request):
     return JsonResponse({'status': 'ok'})
+<<<<<<< HEAD
+=======
+
+
+# ============================================================
+# Sprint 2 · tydzień 2 — Prace pisemne (FR-15, UC19/UC20/UC21)
+# ============================================================
+@session_login_required
+@role_required(Student)
+def work_new(request):
+    """Student wysyła pracę pisemną do sprawdzenia."""
+    # Czy są jakieś pakiety? Jeśli nie — poproś o seed.
+    if not Package.objects.exists():
+        messages.error(
+            request,
+            'Brak pakietów sprawdzenia. Uruchom `python manage.py seed_packages`.'
+        )
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = WorkForm(request.POST, request.FILES)
+        if form.is_valid():
+            files = []
+            if form.cleaned_data.get('attachment'):
+                files = [form.cleaned_data['attachment']]
+
+            work = request.app_user.submitWork(
+                workData={
+                    'title': form.cleaned_data['title'],
+                    'description': form.cleaned_data.get('description', ''),
+                },
+                packageId=form.cleaned_data['package'].id,
+                files=files,
+            )
+            if work is None:
+                messages.error(request, 'Błąd tworzenia pracy.')
+                return redirect('work_new')
+            return redirect('work_payment', work_id=work.id)
+    else:
+        form = WorkForm()
+
+    return render(request, 'ExtLearnerUJ/works/new.html', {'form': form})
+
+
+@session_login_required
+@role_required(Student)
+def work_payment(request, work_id):
+    """Ekran płatności (mock). Po kliknięciu 'Zapłać' transakcja jest
+    przetwarzana przez mock bramki i praca przechodzi w status PAID."""
+    work = get_object_or_404(Work, pk=work_id, studentId=request.app_user.email)
+
+    if work.status != Work.STATUS_PENDING_PAYMENT:
+        messages.info(request, 'Ta praca jest już opłacona.')
+        return redirect('work_detail', work_id=work.id)
+
+    package = get_object_or_404(Package, pk=work.packageId)
+
+    if request.method == 'POST':
+        method = request.POST.get('method', PaymentTransaction.METHOD_BLIK)
+
+        tx = PaymentTransaction.objects.create(
+            workId=str(work.id),
+            userId=request.app_user.email,
+            amount=package.price,
+            method=method,
+        )
+        success = tx.process()  # mock — zawsze sukces
+
+        if success:
+            messages.success(
+                request,
+                f'Płatność przyjęta ({package.price} zł). '
+                f'Praca czeka na moderatora — czas realizacji: 48h.'
+            )
+            return redirect('work_detail', work_id=work.id)
+        else:
+            messages.error(
+                request,
+                'Płatność nie powiodła się. Spróbuj ponownie lub zmień metodę.'
+            )
+
+    return render(request, 'ExtLearnerUJ/works/payment.html', {
+        'work': work, 'package': package,
+    })
+
+
+@session_login_required
+@role_required(Student)
+def work_detail(request, work_id):
+    """Widok pracy — pokazuje status, a jeśli jest review to feedback."""
+    work = get_object_or_404(Work, pk=work_id, studentId=request.app_user.email)
+    package = Package.objects.filter(pk=work.packageId).first()
+    review = WorkReview.objects.filter(
+        workId=str(work.id), status=WorkReview.STATUS_PUBLISHED,
+    ).first()
+    error_marks = []
+    if review:
+        error_marks = ErrorMark.objects.filter(reviewId=str(review.id))
+
+    return render(request, 'ExtLearnerUJ/works/detail.html', {
+        'work': work, 'package': package, 'review': review,
+        'error_marks': error_marks,
+    })
+
+
+@session_login_required
+@role_required(Student)
+def my_works(request):
+    """Lista moich prac."""
+    works = Work.objects.filter(studentId=request.app_user.email)
+    return render(request, 'ExtLearnerUJ/works/my_list.html', {'works': works})
+
+
+# ============================================================
+# Sprint 2 · tydzień 2 — Moderator: prace (UC38, UC39, UC40)
+# ============================================================
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_works_queue(request):
+    """Kolejka prac do sprawdzenia."""
+    if isinstance(request.app_user, Moderator):
+        works = request.app_user.viewWorksToCheck()
+    else:
+        # Admin — widzi wszystko
+        works = list(
+            Work.objects.filter(
+                status__in=[Work.STATUS_PAID, Work.STATUS_IN_REVIEW]
+            ).order_by('submittedAt')
+        )
+    return render(request, 'ExtLearnerUJ/moderator/works_queue.html', {
+        'works': works,
+    })
+
+
+@require_POST
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_reserve_work(request, work_id):
+    """Moderator rezerwuje pracę do sprawdzenia (UC39)."""
+    if isinstance(request.app_user, Moderator):
+        success = request.app_user.reserveWork(work_id)
+    else:
+        # Admin — tak samo, ale bezpośrednio
+        try:
+            work = Work.objects.get(pk=work_id)
+            success = work.assignModerator(request.app_user.email)
+        except Work.DoesNotExist:
+            success = False
+
+    if success:
+        messages.success(request, 'Praca zarezerwowana.')
+        return redirect('moderator_work_editor', work_id=work_id)
+    else:
+        messages.error(
+            request,
+            'Nie udało się zarezerwować — ktoś mógł Cię wyprzedzić.'
+        )
+        return redirect('moderator_works_queue')
+
+
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_work_editor(request, work_id):
+    """Edytor oceny pracy z zaznaczaniem błędów (FR-10)."""
+    work = get_object_or_404(Work, pk=work_id)
+
+    # Sprawdź dostęp: praca musi być przypisana do aktualnego moderatora
+    # (admin ma wolną rękę)
+    if (not isinstance(request.app_user, Admin)
+            and work.assignedModeratorId != request.app_user.email):
+        messages.error(request, 'Ta praca nie jest przypisana do Ciebie.')
+        return redirect('moderator_works_queue')
+
+    # Czy szkic już istnieje?
+    review, _ = WorkReview.objects.get_or_create(
+        workId=str(work.id),
+        moderatorId=request.app_user.email,
+        defaults={'status': WorkReview.STATUS_DRAFT},
+    )
+    error_marks = ErrorMark.objects.filter(reviewId=str(review.id))
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'save')
+        form = WorkReviewForm(request.POST)
+        if form.is_valid():
+            review.grade = form.cleaned_data['grade']
+            review.generalComment = form.cleaned_data['generalComment']
+            review.save(update_fields=['grade', 'generalComment'])
+
+            if action == 'publish':
+                review.publish()
+                messages.success(
+                    request,
+                    'Ocena opublikowana. Student został powiadomiony.',
+                )
+                return redirect('moderator_works_queue')
+            else:
+                messages.success(request, 'Szkic zapisany.')
+                return redirect('moderator_work_editor', work_id=work_id)
+    else:
+        form = WorkReviewForm(initial={
+            'grade': review.grade,
+            'generalComment': review.generalComment,
+        })
+
+    return render(request, 'ExtLearnerUJ/moderator/work_editor.html', {
+        'work': work, 'review': review, 'error_marks': error_marks,
+        'form': form,
+    })
+
+
+@require_POST
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_add_error_mark(request, review_id):
+    """AJAX: dodaje zaznaczenie błędu w edytorze."""
+    try:
+        review = WorkReview.objects.get(
+            pk=review_id, moderatorId=request.app_user.email,
+        )
+    except WorkReview.DoesNotExist:
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        return HttpResponseBadRequest('Invalid JSON')
+
+    snippet = payload.get('snippet', '').strip()
+    mark_type = payload.get('type', ErrorMark.TYPE_GRAMMAR)
+    position = payload.get('position', '')
+    comment = payload.get('comment', '')
+
+    if not snippet or mark_type not in dict(ErrorMark.TYPE_CHOICES):
+        return HttpResponseBadRequest('Invalid payload')
+
+    mark = review.addErrorMark(
+        textSnippet=snippet, mark_type=mark_type, positionInText=position,
+    )
+    if comment:
+        mark.comment = comment
+        mark.save(update_fields=['comment'])
+
+    return JsonResponse({
+        'ok': True, 'id': mark.id,
+        'snippet': mark.textSnippet, 'type': mark.type,
+        'comment': mark.comment,
+    })
+
+
+@require_POST
+@session_login_required
+@role_required(Moderator, Admin)
+def moderator_delete_error_mark(request, mark_id):
+    """AJAX: usuwa zaznaczenie błędu."""
+    try:
+        mark = ErrorMark.objects.get(pk=mark_id)
+        # Weryfikacja: mark musi należeć do review moderatora
+        review = WorkReview.objects.get(
+            pk=mark.reviewId, moderatorId=request.app_user.email,
+        )
+    except (ErrorMark.DoesNotExist, WorkReview.DoesNotExist):
+        return JsonResponse({'error': 'not found'}, status=404)
+
+    mark.delete()
+    return JsonResponse({'ok': True})
+
+
+# ============================================================
+# Sprint 2 · tydzień 2 — Panel admina (FR-11, UC46, UC47, UC48)
+# ============================================================
+@session_login_required
+@role_required(Admin)
+def admin_dashboard(request):
+    """Dashboard admina z metrykami systemu."""
+    stats = request.app_user.viewSystemStats()
+    return render(request, 'ExtLearnerUJ/admin_panel/dashboard.html', {
+        'stats': stats,
+    })
+
+
+@session_login_required
+@role_required(Admin)
+def admin_reports_queue(request):
+    """Kolejka zgłoszeń do rozpatrzenia (UC46)."""
+    reports = request.app_user.handleUserReports()
+    return render(request, 'ExtLearnerUJ/admin_panel/reports_queue.html', {
+        'reports': reports,
+    })
+
+
+@session_login_required
+@role_required(Admin)
+def admin_review_report(request, report_id):
+    """Rozpatrzenie pojedynczego zgłoszenia (UC47)."""
+    report = get_object_or_404(Report, pk=report_id)
+
+    # Podgląd obiektu, którego dotyczy zgłoszenie
+    target = None
+    if report.targetType == Report.TARGET_MATERIAL:
+        try:
+            target = Material.objects.get(pk=report.targetId)
+        except Material.DoesNotExist:
+            target = None
+    elif report.targetType == Report.TARGET_USER:
+        try:
+            target = User.objects.get(email=report.targetId)
+        except User.DoesNotExist:
+            target = None
+
+    if request.method == 'POST':
+        form = ReviewReportForm(request.POST)
+        if form.is_valid():
+            request.app_user.reviewReport(
+                reportId=report_id,
+                decision=form.cleaned_data['decision'],
+                comment=form.cleaned_data.get('comment', ''),
+            )
+            messages.success(request, 'Zgłoszenie rozpatrzone.')
+            return redirect('admin_reports_queue')
+    else:
+        form = ReviewReportForm()
+
+    return render(request, 'ExtLearnerUJ/admin_panel/review_report.html', {
+        'report': report, 'target': target, 'form': form,
+    })
+
+
+@session_login_required
+@role_required(Admin)
+def admin_users_list(request):
+    """Lista wszystkich użytkowników (UC48)."""
+    users = User.objects.all().order_by('-registrationDate')
+    return render(request, 'ExtLearnerUJ/admin_panel/users_list.html', {
+        'users': users,
+    })
+
+
+@session_login_required
+@role_required(Admin)
+def admin_user_detail(request, user_email):
+    """Profil usera + akcje admina (blokada/odblokowanie)."""
+    user = get_object_or_404(User, email=user_email)
+
+    # Historia usera
+    materials = Material.objects.filter(authorId=user.email)
+    reports_made = Report.objects.filter(reporterId=user.email)
+    reports_against = Report.objects.filter(
+        targetType=Report.TARGET_USER, targetId=user.email,
+    )
+
+    if request.method == 'POST':
+        form = AdminBlockUserForm(request.POST)
+        if form.is_valid():
+            duration = form.cleaned_data['duration']
+            days = None if duration == 'permanent' else int(duration)
+            request.app_user.manageUserAccount(
+                userId=user.email,
+                newStatus=User.STATUS_BLOCKED,
+                days=days,
+            )
+            messages.success(
+                request,
+                f'Konto {user.email} zostało zablokowane.'
+            )
+            return redirect('admin_user_detail', user_email=user.email)
+    else:
+        form = AdminBlockUserForm()
+
+    return render(request, 'ExtLearnerUJ/admin_panel/user_detail.html', {
+        'target_user': user, 'materials': materials,
+        'reports_made': reports_made, 'reports_against': reports_against,
+        'form': form,
+    })
+
+
+@require_POST
+@session_login_required
+@role_required(Admin)
+def admin_unblock_user(request, user_email):
+    """Odblokowanie konta."""
+    request.app_user.manageUserAccount(
+        userId=user_email, newStatus=User.STATUS_ACTIVE,
+    )
+    messages.success(request, f'Konto {user_email} odblokowane.')
+    return redirect('admin_user_detail', user_email=user_email)
+>>>>>>> sprint-2

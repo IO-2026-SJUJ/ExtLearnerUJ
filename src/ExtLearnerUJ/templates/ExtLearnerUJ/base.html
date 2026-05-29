@@ -20,6 +20,19 @@
                     <a href="{% url 'dashboard' %}">Panel</a>
                     <a href="{% url 'materials_list' %}">Materiały</a>
                     <a href="{% url 'diagnostic_start' %}">Diagnostyka</a>
+<<<<<<< HEAD
+=======
+                    <a href="{% url 'my_works' %}">Moje prace</a>
+                    {% if is_moderator %}
+                        <a href="{% url 'moderator_dashboard' %}">Moderacja</a>
+                    {% endif %}
+                    {% if is_admin %}
+                        <a href="{% url 'admin_dashboard' %}">Administracja</a>
+                    {% endif %}
+                    <a href="{% url 'notifications_list' %}" title="Powiadomienia" style="position: relative;">
+                        🔔{% if unread_notifications %}<span style="position: absolute; top: -4px; right: -8px; background: var(--color-accent); color: var(--color-paper); font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600; padding: 1px 5px; border-radius: 10px;">{{ unread_notifications }}</span>{% endif %}
+                    </a>
+>>>>>>> sprint-2
                     <span class="app-nav__user">— {{ app_user.name }}</span>
                     <form method="post" action="{% url 'logout' %}" style="margin:0">
                         {% csrf_token %}
@@ -48,7 +61,11 @@
     </main>
 
     <footer class="app-footer">
+<<<<<<< HEAD
         <span>ExtLearnerUJ · Sprint 1 · zespół SJUJ</span>
+=======
+        <span>ExtLearnerUJ · zespół SJUJ</span>
+>>>>>>> sprint-2
         &nbsp;·&nbsp;
         <span>Julia Łapiuk · Seweryn Olejnik</span>
     </footer>

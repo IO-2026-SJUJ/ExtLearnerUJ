@@ -1,0 +1,231 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Sprawdzanie: {{ work.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .editor-layout {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: var(--sp-5);
+        align-items: start;
+    }
+    @media (max-width: 1100px) {
+        .editor-layout { grid-template-columns: 1fr; }
+    }
+
+    .editor-text {
+        padding: var(--sp-5);
+        background: var(--color-paper);
+        border: var(--border-hair);
+        line-height: 1.9;
+        font-size: var(--fs-base);
+        white-space: pre-wrap;
+        user-select: text;
+        min-height: 300px;
+    }
+
+    /* Kolorowe zaznaczenia */
+    .mark {
+        padding: 2px 3px;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: filter 0.1s ease;
+    }
+    .mark:hover { filter: brightness(0.92); }
+    .mark--grammar   { background: #fde1dc; border-bottom: 2px solid #c0392b; }
+    .mark--unnatural { background: #fbefc3; border-bottom: 2px solid #b8870e; }
+    .mark--positive  { background: #cfe6d7; border-bottom: 2px solid #1e6b47; }
+
+    .tools {
+        position: sticky;
+        top: 90px;
+        border: 2px solid var(--color-ink);
+        padding: var(--sp-5);
+        background: var(--color-paper);
+    }
+    .tool-group {
+        margin-bottom: var(--sp-5);
+        padding-bottom: var(--sp-4);
+        border-bottom: var(--border-soft);
+    }
+    .tool-group:last-child { border-bottom: none; }
+    .tool-group h3 {
+        font-size: var(--fs-sm);
+        font-family: var(--font-mono);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 0 0 var(--sp-3);
+        color: var(--color-ink-muted);
+    }
+
+    .color-picker {
+        display: flex;
+        gap: var(--sp-2);
+    }
+    .color-btn {
+        flex: 1;
+        padding: var(--sp-3);
+        border: 2px solid var(--color-ink);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        text-align: center;
+        transition: transform 0.1s ease;
+    }
+    .color-btn:hover { transform: translateY(-1px); }
+    .color-btn--grammar   { background: #fde1dc; border-color: #c0392b; }
+    .color-btn--unnatural { background: #fbefc3; border-color: #b8870e; }
+    .color-btn--positive  { background: #cfe6d7; border-color: #1e6b47; }
+    .color-btn.active {
+        box-shadow: 0 0 0 3px var(--color-ink);
+        transform: translateY(-2px);
+    }
+
+    .mark-list {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: var(--sp-3);
+    }
+    .mark-item {
+        padding: var(--sp-2) var(--sp-3);
+        border-left: 3px solid;
+        margin-bottom: var(--sp-2);
+        font-size: var(--fs-sm);
+    }
+    .mark-item--grammar   { border-color: #c0392b; background: #fff3f0; }
+    .mark-item--unnatural { border-color: #b8870e; background: #fff9e6; }
+    .mark-item--positive  { border-color: #1e6b47; background: #e3f0e8; }
+    .mark-item__snippet { font-family: var(--font-mono); font-size: var(--fs-xs); margin-bottom: 2px; }
+    .mark-item__comment { color: var(--color-ink-soft); font-size: var(--fs-xs); }
+    .mark-item__delete {
+        float: right;
+        background: none;
+        border: none;
+        color: var(--color-ink-muted);
+        cursor: pointer;
+        font-size: var(--fs-md);
+        line-height: 1;
+        padding: 0;
+    }
+    .mark-item__delete:hover { color: var(--color-error); }
+
+    .help-text {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-ink-muted);
+        padding: var(--sp-3);
+        background: var(--color-paper-dark);
+        margin-bottom: var(--sp-4);
+        line-height: 1.4;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Moderator · edytor oceny</p>
+    <h1 class="reveal reveal-2">{{ work.title }}</h1>
+    <div class="reveal reveal-3" style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin-bottom: var(--sp-5); padding-bottom: var(--sp-3); border-bottom: var(--border-soft);">
+        Student: {{ work.studentId }}
+        &nbsp;·&nbsp; Wysłano: {{ work.submittedAt|date:"j F Y, H:i" }}
+    </div>
+
+    <div class="editor-layout reveal reveal-4">
+        <div>
+            <div class="help-text">
+                Zaznacz fragment tekstu myszą, potem kliknij kolor w panelu po prawej.
+                Zaznaczenie zostanie dodane do oceny i widoczne dla studenta.
+                Kliknij na istniejące zaznaczenie w liście po prawej, aby zobaczyć komentarz
+                lub usunąć (×).
+            </div>
+
+            <div id="editor-text"
+                 class="editor-text"
+                 data-review-id="{{ review.id }}"
+                 data-add-url="{% url 'moderator_add_error_mark' review.id %}">{{ work.description }}</div>
+
+            {% if work.attachments.exists %}
+                <div style="margin-top: var(--sp-4); padding: var(--sp-4); background: var(--color-paper-dark);">
+                    <h4 style="font-size: var(--fs-sm); margin: 0 0 var(--sp-2);">Załączniki studenta</h4>
+                    {% for att in work.attachments.all %}
+                        <a href="{{ MEDIA_URL }}{{ att.filePath }}" target="_blank" rel="noopener"
+                           class="mono" style="display: block; font-size: var(--fs-sm); padding: var(--sp-1) 0;">
+                            → {{ att.fileName }}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <aside class="tools">
+            <div class="tool-group">
+                <h3>Typ zaznaczenia</h3>
+                <div class="color-picker">
+                    <button type="button" class="color-btn color-btn--grammar active" data-type="GRAMMAR">
+                        Gram.
+                    </button>
+                    <button type="button" class="color-btn color-btn--unnatural" data-type="UNNATURAL">
+                        Niezgrabne
+                    </button>
+                    <button type="button" class="color-btn color-btn--positive" data-type="POSITIVE">
+                        Dobre
+                    </button>
+                </div>
+                <p style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin: var(--sp-3) 0 0;">
+                    Zaznacz tekst → kliknij kolor.
+                </p>
+            </div>
+
+            <div class="tool-group">
+                <h3>Wszystkie zaznaczenia ({{ error_marks|length }})</h3>
+                <div class="mark-list" id="mark-list">
+                    {% for mark in error_marks %}
+                        <div class="mark-item mark-item--{{ mark.type|lower }}" data-id="{{ mark.id }}">
+                            <button class="mark-item__delete"
+                                    data-delete-url="{% url 'moderator_delete_error_mark' mark.id %}"
+                                    title="Usuń">×</button>
+                            <div class="mark-item__snippet">„{{ mark.textSnippet|truncatechars:60 }}"</div>
+                            {% if mark.comment %}
+                                <div class="mark-item__comment">{{ mark.comment }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <form method="post" id="review-form">
+                {% csrf_token %}
+
+                <div class="tool-group">
+                    <h3>Ocena</h3>
+                    {% with field=form.grade %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+                </div>
+
+                <div class="tool-group">
+                    <h3>Komentarz ogólny</h3>
+                    {{ form.generalComment }}
+                    {% for error in form.generalComment.errors %}
+                        <small class="form-field__error">{{ error }}</small>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" name="action" value="save" class="btn btn--block">
+                    💾 Zapisz szkic
+                </button>
+                <button type="submit" name="action" value="publish"
+                        class="btn btn--accent btn--block" style="margin-top: var(--sp-2);">
+                    ✓ Opublikuj ocenę
+                </button>
+            </form>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/error-marker.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Płatność — ExtLearnerUJ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .methods {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-5);
+    }
+    .method {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-5);
+        border: var(--border-hair);
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        transition: background 0.1s ease;
+    }
+    .method:hover { background: var(--color-paper-dark); }
+    .method:has(input:checked) {
+        background: var(--color-accent-soft);
+        border-color: var(--color-accent);
+    }
+    .method__icon {
+        font-family: var(--font-mono);
+        font-size: var(--fs-md);
+        min-width: 60px;
+        font-weight: 600;
+    }
+    .mock-notice {
+        padding: var(--sp-4);
+        background: var(--color-warning-bg);
+        border-left: 3px solid var(--color-warning);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-ink-soft);
+        margin-bottom: var(--sp-5);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Płatność</p>
+    <h1 class="reveal reveal-2">Podsumowanie zamówienia</h1>
+
+    <div class="mock-notice reveal reveal-3">
+        <strong>Tryb demo</strong> — transakcja nie jest rzeczywista. W produkcji
+        ten ekran przekieruje do bramki Przelewy24 / Stripe.
+    </div>
+
+    <div class="reveal reveal-4" style="border: 2px solid var(--color-ink); padding: var(--sp-5); margin-bottom: var(--sp-6);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: var(--border-soft);">
+            <span class="mono" style="color: var(--color-ink-muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em;">
+                Praca
+            </span>
+            <strong>{{ work.title }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: var(--sp-3); padding-bottom: var(--sp-3); border-bottom: var(--border-soft);">
+            <span class="mono" style="color: var(--color-ink-muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em;">
+                Pakiet
+            </span>
+            <strong>{{ package.name }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <span class="mono" style="color: var(--color-ink-muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em;">
+                Do zapłaty
+            </span>
+            <span style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--color-accent);">
+                {{ package.price }} zł
+            </span>
+        </div>
+    </div>
+
+    <form method="post" class="reveal reveal-4">
+        {% csrf_token %}
+
+        <h3 style="font-size: var(--fs-md); margin-bottom: var(--sp-3);">Metoda płatności</h3>
+        <div class="methods">
+            <label class="method">
+                <input type="radio" name="method" value="BLIK" checked>
+                <span class="method__icon">BLIK</span>
+                <span>Szybki kod 6-cyfrowy z aplikacji bankowej</span>
+            </label>
+            <label class="method">
+                <input type="radio" name="method" value="CARD">
+                <span class="method__icon">💳</span>
+                <span>Karta płatnicza (Visa / Mastercard)</span>
+            </label>
+            <label class="method">
+                <input type="radio" name="method" value="TRANSFER">
+                <span class="method__icon">🏦</span>
+                <span>Szybki przelew online</span>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+            <button type="submit" class="btn btn--accent btn--lg">Zapłać {{ package.price }} zł</button>
+            <a href="{% url 'work_new' %}" class="btn btn--ghost btn--lg">← Wróć</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

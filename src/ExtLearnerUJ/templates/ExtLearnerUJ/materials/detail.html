@@ -20,7 +20,13 @@
         &nbsp;·&nbsp;
         Dodano: {{ material.createdAt|date:"j F Y" }}
         &nbsp;·&nbsp;
+<<<<<<< HEAD
         Priorytet: {{ material.priority }}
+=======
+        Priorytet: <strong id="priority-value" class="mono" style="color: var(--color-accent);">{{ material.priority }}</strong>
+        &nbsp;·&nbsp;
+        Głosów: <strong id="vote-count" class="mono">{{ vote_count }}</strong>
+>>>>>>> sprint-2
     </div>
 
     <article class="reveal reveal-4" style="font-size: var(--fs-md); line-height: 1.7;">
@@ -33,7 +39,11 @@
             <ul style="list-style: none; padding: 0;">
                 {% for att in material.attachments.all %}
                     <li class="mono" style="padding: var(--sp-2) 0;">
+<<<<<<< HEAD
                         → {{ att.fileName }}
+=======
+                        → <a href="{{ MEDIA_URL }}{{ att.filePath }}" target="_blank" rel="noopener">{{ att.fileName }}</a>
+>>>>>>> sprint-2
                         <span style="color: var(--color-ink-muted); font-size: var(--fs-xs);">
                             ({{ att.sizeBytes|filesizeformat }})
                         </span>
@@ -43,6 +53,7 @@
         </section>
     {% endif %}
 
+<<<<<<< HEAD
     <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-soft);">
         <a href="{% url 'materials_list' %}" class="btn">← Powrót do listy</a>
         <span class="mono" style="margin-left: var(--sp-5); color: var(--color-ink-muted); font-size: var(--fs-xs);">
@@ -51,3 +62,38 @@
     </div>
 </div>
 {% endblock %}
+=======
+    {# Akcje Sprintu 2: głosowanie + zgłoszenie + powrót #}
+    <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-hair); display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center;">
+        <a href="{% url 'materials_list' %}" class="btn">← Powrót</a>
+
+        {% if not material.isVerified %}
+            <button type="button"
+                    id="vote-btn"
+                    class="btn {% if user_voted %}btn--ghost{% else %}btn--accent{% endif %}"
+                    data-material-id="{{ material.id }}"
+                    data-voted="{{ user_voted|yesno:'true,false' }}"
+                    {% if user_voted %}disabled{% endif %}>
+                {% if user_voted %}👍 Już głosowałeś{% else %}👍 Głosuj — zwiększ priorytet{% endif %}
+            </button>
+        {% endif %}
+
+        <a href="{% url 'report_material' material.id %}" class="btn btn--ghost">
+            ⚠ Zgłoś błąd / spam
+        </a>
+
+        <span class="mono" style="margin-left: auto; color: var(--color-ink-muted); font-size: var(--fs-xs);">
+            Ulubione — Sprint 3
+        </span>
+    </div>
+
+    {# Ukryty CSRF token dla AJAX-a #}
+    <form style="display: none;">{% csrf_token %}</form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% load static %}
+<script src="{% static 'js/material-vote.js' %}" defer></script>
+{% endblock %}
+>>>>>>> sprint-2

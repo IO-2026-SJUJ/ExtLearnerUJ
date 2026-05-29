@@ -1,0 +1,32 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Dodaj materiał — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Nowy materiał</p>
+    <h1 class="reveal reveal-2">Podziel się <em style="font-style: italic; color: var(--color-accent);">wiedzą</em>.</h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Materiał trafi do kolejki moderacji. Gdy moderator go zaakceptuje,
+        pojawi się na liście jako <span class="chip chip--verified" style="padding: 1px 6px; font-size: 0.7rem;">✓ zweryfikowany</span>
+        i pomoże innym studentom.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="form reveal reveal-4" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="message message--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        {% with field=form.title %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.category %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.content %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+        {% with field=form.attachment %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+
+        <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+            <button type="submit" class="btn btn--accent btn--lg">Wyślij do weryfikacji</button>
+            <a href="{% url 'materials_list' %}" class="btn btn--ghost btn--lg">Anuluj</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

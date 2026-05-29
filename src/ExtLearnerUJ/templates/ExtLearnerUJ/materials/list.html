@@ -5,8 +5,16 @@
 {% block content %}
 <div class="container">
     <p class="eyebrow reveal reveal-1">§ Baza materiałów</p>
+<<<<<<< HEAD
     <h1 class="reveal reveal-2">Materiały <em style="font-style: italic; color: var(--color-accent);">do nauki</em>.</h1>
     <p class="reveal reveal-3" style="color: var(--color-ink-muted); max-width: 60ch; margin-bottom: var(--sp-6);">
+=======
+    <div class="reveal reveal-2" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--sp-4);">
+        <h1 style="margin: 0;">Materiały <em style="font-style: italic; color: var(--color-accent);">do nauki</em>.</h1>
+        <a href="{% url 'material_create' %}" class="btn btn--accent">+ Dodaj materiał</a>
+    </div>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); max-width: 60ch; margin: var(--sp-4) 0 var(--sp-6);">
+>>>>>>> sprint-2
         Materiały oznaczone jako <span class="chip chip--verified" style="padding: 1px 6px; font-size: 0.7rem;">✓ zweryfikowane</span> zostały sprawdzone
         przez moderatora. Te <span class="chip chip--pending" style="padding: 1px 6px; font-size: 0.7rem;">⏳ oczekujące</span>
         czekają na weryfikację — możesz je oglądać, ale potraktuj ostrożnie.

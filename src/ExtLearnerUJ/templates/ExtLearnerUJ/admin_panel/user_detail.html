@@ -1,0 +1,176 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}{{ target_user.email }} — admin{% endblock %}
+
+{% block extra_head %}
+<style>
+    .user-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: var(--sp-5);
+        align-items: start;
+    }
+    @media (max-width: 900px) {
+        .user-layout { grid-template-columns: 1fr; }
+    }
+    .user-history {
+        padding: var(--sp-5);
+        border: var(--border-hair);
+        background: var(--color-paper);
+    }
+    .block-form {
+        position: sticky;
+        top: 90px;
+        border: 2px solid var(--color-error);
+        padding: var(--sp-5);
+        background: var(--color-paper);
+    }
+    .duration-radio {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-3);
+        list-style: none;
+        padding: 0;
+    }
+    .duration-radio label {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: var(--sp-2) var(--sp-3);
+        border: var(--border-hair);
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        cursor: pointer;
+    }
+    .duration-radio li:has(input:checked) label {
+        background: var(--color-error-bg);
+        border-color: var(--color-error);
+    }
+    .history-item {
+        padding: var(--sp-2) 0;
+        border-bottom: var(--border-soft);
+        font-size: var(--fs-sm);
+    }
+    .history-item:last-child { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Admin · profil użytkownika</p>
+    <h1 class="reveal reveal-2">{{ target_user.name }}</h1>
+    <div class="reveal reveal-3" style="font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-ink-muted); margin-bottom: var(--sp-5);">
+        {{ target_user.email }}
+        &nbsp;·&nbsp;
+        {% if target_user.status == 'ACTIVE' %}
+            <span style="color: var(--color-success);">✓ Aktywne</span>
+        {% elif target_user.status == 'BLOCKED' %}
+            <span style="color: var(--color-error);">🚫 Zablokowane</span>
+        {% else %}
+            {{ target_user.status }}
+        {% endif %}
+        &nbsp;·&nbsp; Rejestracja: {{ target_user.registrationDate|date:"j F Y" }}
+    </div>
+
+    <div class="user-layout reveal reveal-4">
+        <div class="user-history">
+            <h2 style="font-size: var(--fs-md); margin-top: 0;">Historia</h2>
+
+            <h3 style="font-size: var(--fs-sm); margin-top: var(--sp-5); margin-bottom: var(--sp-3); color: var(--color-ink-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;">
+                Dodane materiały ({{ materials|length }})
+            </h3>
+            {% if materials %}
+                {% for m in materials %}
+                    <div class="history-item">
+                        <a href="{% url 'material_detail' m.id %}" target="_blank">{{ m.title }}</a>
+                        &nbsp;·&nbsp; <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">{{ m.status }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: var(--color-ink-muted); font-style: italic;">Brak.</p>
+            {% endif %}
+
+            <h3 style="font-size: var(--fs-sm); margin-top: var(--sp-5); margin-bottom: var(--sp-3); color: var(--color-ink-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;">
+                Zgłoszenia złożone ({{ reports_made|length }})
+            </h3>
+            {% if reports_made %}
+                {% for r in reports_made %}
+                    <div class="history-item">
+                        {{ r.reason|truncatewords:15 }}
+                        &nbsp;·&nbsp; <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">{{ r.status }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: var(--color-ink-muted); font-style: italic;">Brak.</p>
+            {% endif %}
+
+            <h3 style="font-size: var(--fs-sm); margin-top: var(--sp-5); margin-bottom: var(--sp-3); color: var(--color-ink-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;">
+                Zgłoszenia przeciwko ({{ reports_against|length }})
+            </h3>
+            {% if reports_against %}
+                {% for r in reports_against %}
+                    <div class="history-item" style="color: var(--color-error);">
+                        {{ r.reason|truncatewords:15 }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: var(--color-ink-muted); font-style: italic;">Brak.</p>
+            {% endif %}
+        </div>
+
+        <aside class="block-form">
+            {% if target_user.status == 'ACTIVE' %}
+                <h2 style="font-size: var(--fs-md); margin-top: 0; margin-bottom: var(--sp-4); color: var(--color-error);">
+                    🚫 Zablokuj konto
+                </h2>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="message message--error">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <ul class="duration-radio">
+                        {% for radio in form.duration %}
+                            <li>{{ radio }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% for error in form.duration.errors %}
+                        <small class="form-field__error">{{ error }}</small>
+                    {% endfor %}
+
+                    <div class="form-field" style="margin-bottom: var(--sp-4);">
+                        <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
+                        {{ form.reason }}
+                        {% for error in form.reason.errors %}
+                            <small class="form-field__error">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn--accent btn--block">
+                        Zablokuj konto
+                    </button>
+                </form>
+            {% else %}
+                <h2 style="font-size: var(--fs-md); margin-top: 0; margin-bottom: var(--sp-4); color: var(--color-success);">
+                    ✓ Odblokuj konto
+                </h2>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-soft); margin-bottom: var(--sp-4);">
+                    Konto jest obecnie zablokowane. Odblokuj, aby użytkownik znów mógł się zalogować.
+                </p>
+                <form method="post" action="{% url 'admin_unblock_user' target_user.email %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--accent btn--block">
+                        Odblokuj
+                    </button>
+                </form>
+            {% endif %}
+
+            <a href="{% url 'admin_users_list' %}"
+               class="btn btn--ghost btn--block" style="margin-top: var(--sp-3);">
+                ← Wróć do listy
+            </a>
+        </aside>
+    </div>
+</div>
+{% endblock %}
