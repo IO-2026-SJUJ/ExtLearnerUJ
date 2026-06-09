@@ -5,23 +5,18 @@
 {% block content %}
 <div class="container">
     <p class="eyebrow reveal reveal-1">§ Baza materiałów</p>
-<<<<<<< HEAD
-    <h1 class="reveal reveal-2">Materiały <em style="font-style: italic; color: var(--color-accent);">do nauki</em>.</h1>
-    <p class="reveal reveal-3" style="color: var(--color-ink-muted); max-width: 60ch; margin-bottom: var(--sp-6);">
-=======
     <div class="reveal reveal-2" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--sp-4);">
         <h1 style="margin: 0;">Materiały <em style="font-style: italic; color: var(--color-accent);">do nauki</em>.</h1>
         <a href="{% url 'material_create' %}" class="btn btn--accent">+ Dodaj materiał</a>
     </div>
     <p class="reveal reveal-3" style="color: var(--color-ink-muted); max-width: 60ch; margin: var(--sp-4) 0 var(--sp-6);">
->>>>>>> sprint-2
         Materiały oznaczone jako <span class="chip chip--verified" style="padding: 1px 6px; font-size: 0.7rem;">✓ zweryfikowane</span> zostały sprawdzone
         przez moderatora. Te <span class="chip chip--pending" style="padding: 1px 6px; font-size: 0.7rem;">⏳ oczekujące</span>
         czekają na weryfikację — możesz je oglądać, ale potraktuj ostrożnie.
     </p>
 
     <div class="filters reveal reveal-3">
-        <a href="?" class="filter {% if not current_category and not current_status %}active{% endif %}">
+        <a href="?" class="filter {% if not current_category and not current_status and not mine %}active{% endif %}">
             Wszystkie
         </a>
         {% for cat in categories %}
@@ -35,6 +30,10 @@
         </a>
         <a href="?status=pending" class="filter {% if current_status == 'pending' %}active{% endif %}">
             ⏳ Oczekujące
+        </a>
+        <span style="width: 1px; background: var(--color-paper-dark); margin: 0 var(--sp-2);" aria-hidden="true"></span>
+        <a href="?mine=1" class="filter {% if mine %}active{% endif %}">
+            👤 Moje
         </a>
     </div>
 
