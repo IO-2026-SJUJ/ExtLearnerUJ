@@ -23,9 +23,15 @@
         <button type="submit" class="btn btn--accent btn--lg btn--block">Aktywuj konto</button>
     </form>
 
-    <p style="margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--color-ink-muted);">
-        Nie widzisz wiadomości? Sprawdź folder <em>spam</em>.
-        Kod wygasa po 24 godzinach — w takim wypadku zarejestruj się ponownie.
+    <form method="post" action="{% url 'resend_verification_code' %}"
+          class="reveal reveal-4" style="margin-top: var(--sp-4);">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--ghost btn--block">Wyślij kod ponownie</button>
+    </form>
+
+    <p style="margin-top: var(--sp-5); font-size: var(--fs-sm); color: var(--color-ink-muted);">
+        Nie widzisz wiadomości? Sprawdź folder <em>spam</em>, a jeśli kod wygasł —
+        kliknij „Wyślij kod ponownie".
     </p>
 </div>
 {% endblock %}
