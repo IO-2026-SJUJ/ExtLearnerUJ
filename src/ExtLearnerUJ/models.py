@@ -21,11 +21,6 @@ from django.core.mail import send_mail
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import models
 from django.utils import timezone
-<<<<<<< HEAD
-
-
-=======
->>>>>>> sprint-2
 # ============================================================
 # Helpery — callable defaulty (fix bugu z poprzedniej wersji)
 # ============================================================
@@ -65,6 +60,8 @@ class User(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     emailVerified = models.BooleanField(default=False)
     registrationDate = models.DateTimeField(auto_now_add=True)
+    # Termin końca blokady czasowej (None = brak blokady / blokada bezterminowa).
+    blockedUntil = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=['email'])]
@@ -123,16 +120,35 @@ class User(models.Model):
         token.delete()
         return True
 
+    def sendVerificationCode(self) -> bool:
+        """Generuje świeży kod weryfikacyjny i wysyła go mailem (ponowne
+        wysłanie). Stare tokeny tej osoby usuwamy. Zwraca False, gdy konto
+        jest już zweryfikowane."""
+        if self.emailVerified:
+            return False
+        EmailVerificationToken.objects.filter(userId=self.email).delete()
+        token = EmailVerificationToken.objects.create(userId=self.email)
+        self._send_verification_email(token.token)
+        return True
+
     # -------------------------
     # Logowanie / sesje
     # -------------------------
     @classmethod
     def authenticate(cls, email: str, password: str) -> 'Session | None':
-        """Sprawdza dane logowania i tworzy sesję. UC03."""
+        """Sprawdza dane logowania i tworzy sesję. UC03.
+        E-mail traktujemy bez rozróżniania wielkości liter."""
         try:
-            user = cls.objects.get(email=email)
+            user = cls.objects.get(email__iexact=(email or '').strip())
         except cls.DoesNotExist:
             return None
+        except cls.MultipleObjectsReturned:
+            user = cls.objects.filter(email__iexact=(email or '').strip()).first()
+        # Auto-odblokowanie: jeśli blokada czasowa już wygasła — reaktywuj.
+        if user.status == cls.STATUS_BLOCKED and user.is_block_expired():
+            user.status = cls.STATUS_ACTIVE
+            user.blockedUntil = None
+            user.save(update_fields=['status', 'blockedUntil'])
         if user.status != cls.STATUS_ACTIVE:
             return None
         if not user.emailVerified:
@@ -141,6 +157,10 @@ class User(models.Model):
             return None
         return Session.create(user.email)
 
+    def is_block_expired(self) -> bool:
+        """True, gdy blokada była czasowa i już minęła."""
+        return self.blockedUntil is not None and timezone.now() >= self.blockedUntil
+
     def logout(self) -> None:
         Session.objects.filter(userId=self.email).delete()
 
@@ -148,11 +168,66 @@ class User(models.Model):
     # Usuwanie konta (RODO — O-01)
     # -------------------------
     def deleteAccount(self) -> bool:
+        """RODO (O-01) — trwałe usunięcie konta wraz ze WSZYSTKIMI danymi
+        osobowymi użytkownika. Operacja nieodwracalna, w jednej transakcji."""
+        from django.db import transaction
+        email = self.email
         try:
-            email = self.email
-            Session.objects.filter(userId=email).delete()
-            EmailVerificationToken.objects.filter(userId=email).delete()
-            self.delete()
+            with transaction.atomic():
+                # --- Moje prace pisemne (wraz z recenzjami, błędami,
+                #     płatnościami i załącznikami) ---
+                my_work_ids = [str(w.id) for w in Work.objects.filter(studentId=email)]
+                if my_work_ids:
+                    rev_ids = [str(r.id) for r in WorkReview.objects.filter(workId__in=my_work_ids)]
+                    if rev_ids:
+                        ErrorMark.objects.filter(reviewId__in=rev_ids).delete()
+                    WorkReview.objects.filter(workId__in=my_work_ids).delete()
+                    PaymentTransaction.objects.filter(workId__in=my_work_ids).delete()
+                    Work.objects.filter(studentId=email).delete()  # FK → załączniki
+
+                # --- Prace, które oceniałem(-am) jako moderator: zdejmuję
+                #     swoje autorstwo i zwracam je do kolejki ---
+                my_reviews = WorkReview.objects.filter(moderatorId=email)
+                reviewed_work_ids = [r.workId for r in my_reviews]
+                rev_ids = [str(r.id) for r in my_reviews]
+                if rev_ids:
+                    ErrorMark.objects.filter(reviewId__in=rev_ids).delete()
+                my_reviews.delete()
+                if reviewed_work_ids:
+                    Work.objects.filter(id__in=reviewed_work_ids).update(
+                        assignedModeratorId=None, status=Work.STATUS_PAID,
+                    )
+
+                # --- Materiały, których jestem autorem (+ ich głosy,
+                #     weryfikacje, komentarze, załączniki) ---
+                my_material_ids = [str(m.id) for m in Material.objects.filter(authorId=email)]
+                if my_material_ids:
+                    Vote.objects.filter(materialId__in=my_material_ids).delete()
+                    Favorite.objects.filter(materialId__in=my_material_ids).delete()
+                    MaterialVerification.objects.filter(materialId__in=my_material_ids).delete()
+                    Comment.objects.filter(targetId__in=my_material_ids).delete()
+                    Material.objects.filter(authorId=email).delete()  # FK → załączniki
+
+                # --- Moja aktywność i ślady osobowe ---
+                MaterialVerification.objects.filter(moderatorId=email).delete()
+                Vote.objects.filter(userId=email).delete()
+                Favorite.objects.filter(userId=email).delete()
+                Comment.objects.filter(authorId=email).delete()
+                Notification.objects.filter(userId=email).delete()
+                TestResult.objects.filter(userId=email).delete()  # + DiagnosticResult (MTI)
+                ExamAttempt.objects.filter(userId=email).delete()
+                UserStats.objects.filter(userId=email).delete()
+                PaymentTransaction.objects.filter(userId=email).delete()
+                Payout.objects.filter(moderatorId=email).delete()
+                Report.objects.filter(reporterId=email).delete()
+                Report.objects.filter(targetType=Report.TARGET_USER, targetId=email).delete()
+                ModeratorApplication.objects.filter(candidateId=email).delete()
+                PasswordResetToken.objects.filter(userId=email).delete()
+                EmailVerificationToken.objects.filter(userId=email).delete()
+                Session.objects.filter(userId=email).delete()
+
+                # --- Na końcu samo konto (MTI: usunięcie roli usuwa też User) ---
+                self.delete()
             return True
         except Exception:
             return False
@@ -161,15 +236,6 @@ class User(models.Model):
     # Zgłoszenia (Sprint 2)
     # -------------------------
     def submitReport(self, targetType: str, targetId: str, reason: str):
-<<<<<<< HEAD
-        report = Report(
-            reporterId=self.email,
-            targetType=targetType,
-            targetId=targetId,
-            reason=reason,
-        )
-        report.submit()
-=======
         """Składa zgłoszenie o nadużyciu (FR-13, UC25).
         targetType: 'MATERIAL'|'USER'|'COMMENT'"""
         report = Report.objects.create(
@@ -179,17 +245,14 @@ class User(models.Model):
             reason=reason,
             status='PENDING',
         )
->>>>>>> sprint-2
         return report
 
-
-class Student(User):
-    """Podstawowy użytkownik. W Sprincie 1 implementujemy:
-    takeDiagnosticTest, browseMaterials, viewMaterial."""
-
+    # -------------------------
+    # Funkcje dostępne dla KAŻDEJ roli (Student/Moderator/Admin).
+    # Moderator i admin też mogą się uczyć: diagnostyka, egzamin, materiały,
+    # prace pisemne, statystyki. Dlatego metody są na klasie bazowej User.
+    # -------------------------
     def takeDiagnosticTest(self):
-        """Zwraca aktywny test diagnostyczny (pierwszy DiagnosticTest w bazie).
-        Właściwa logika oceniania jest w GradingService.autoGradeDiagnostic."""
         return DiagnosticTest.objects.first()
 
     def browseMaterials(self, filters: dict | None = None):
@@ -207,22 +270,17 @@ class Student(User):
         except Material.DoesNotExist:
             return None
 
-    # Stuby pod Sprint 2
     def viewRecommendations(self):
-        return []
+        """FR-05: rekomendacje materiałów na podstawie najsłabszych obszarów
+        z ostatniego testu diagnostycznego."""
+        from .services import RecommendationService
+        return RecommendationService().getRecommendationsForUser(self.email)
 
     def addToFavorites(self, materialId):
         return None
 
     def voteMaterial(self, materialId):
-<<<<<<< HEAD
-        return None
-
-    def submitWork(self, workData, packageId, files):
-        return None
-=======
-        """Oddaje głos na materiał (zwiększa jego priorytet).
-        Idempotentne — drugi głos tego samego usera nic nie robi (FR-09)."""
+        """Oddaje głos na materiał (FR-09). Idempotentne."""
         try:
             material = Material.objects.get(pk=materialId)
         except Material.DoesNotExist:
@@ -235,14 +293,11 @@ class Student(User):
         return vote
 
     def submitWork(self, workData: dict, packageId, files=None):
-        """Przesyła pracę pisemną do sprawdzenia (FR-15, UC19).
-        Tworzy Work w statusie PENDING_PAYMENT — po udanej płatności
-        przechodzi w PAID i trafia do kolejki moderatora."""
+        """Przesyła pracę pisemną do sprawdzenia (FR-15, UC19)."""
         try:
             package = Package.objects.get(pk=packageId)
         except Package.DoesNotExist:
             return None
-
         work = Work.objects.create(
             title=workData.get('title', ''),
             description=workData.get('description', ''),
@@ -250,7 +305,6 @@ class Student(User):
             packageId=str(package.id),
             status=Work.STATUS_PENDING_PAYMENT,
         )
-        # Upload plików — jeśli są
         if files:
             for f in files:
                 att = FileAttachment()
@@ -258,32 +312,172 @@ class Student(User):
                     att.work = work
                     att.save()
         return work
->>>>>>> sprint-2
 
     def viewStats(self):
-        pass
+        from .services import StatisticsService
+        return StatisticsService().getUserStatistics(self.email)
 
     def downloadLearningReport(self):
         from .services import ReportGenerator
-        return ReportGenerator().buildPdf(self.id, 'all')
+        return ReportGenerator().buildPdf(self.email, 'all')
 
-    def applyForModerator(self):
-        return None
+    def deleteOwnMaterial(self, materialId) -> bool:
+        """Autor może usunąć własny materiał."""
+        try:
+            material = Material.objects.get(pk=materialId, authorId=self.email)
+        except Material.DoesNotExist:
+            return False
+        material.delete()
+        return True
 
-    def rateModerator(self, workId, score, comment):
-        pass
+    def applyForModerator(self, motivation: str = '', certificatePath: str = '',
+                          testScore=None):
+        """Składa wniosek o rolę moderatora. Jeden aktywny (PENDING) wniosek
+        na osobę. Kandydat wypełnia test kwalifikacyjny — wynik poniżej progu
+        oznacza automatyczne odrzucenie (bez angażowania administratora);
+        w przeciwnym razie wniosek trafia do kolejki admina wraz z wynikiem."""
+        from .moderator_test import PASS_THRESHOLD
+        existing = ModeratorApplication.objects.filter(
+            candidateId=self.email, status='PENDING',
+        ).first()
+        if existing:
+            return existing
+
+        # Automatyczne odrzucenie przy zbyt niskim wyniku testu.
+        if testScore is not None and testScore < PASS_THRESHOLD:
+            application = ModeratorApplication.objects.create(
+                candidateId=self.email,
+                status=ModeratorApplication.STATUS_REJECTED,
+                motivation=motivation,
+                certificatePath=certificatePath,
+                testScore=testScore,
+                decisionComment=(
+                    f'Odrzucono automatycznie: wynik testu kwalifikacyjnego '
+                    f'{testScore}% jest poniżej progu {PASS_THRESHOLD:.0f}%.'
+                ),
+                reviewedAt=timezone.now(),
+                reviewedBy='system',
+            )
+            Notification.objects.create(
+                userId=self.email,
+                message=(
+                    f'Twój wniosek o rolę moderatora został odrzucony — wynik '
+                    f'testu kwalifikacyjnego ({testScore}%) jest poniżej '
+                    f'wymaganych {PASS_THRESHOLD:.0f}%. Możesz spróbować ponownie.'
+                ),
+                link='/moderator/apply/',
+            )
+            return application
+
+        application = ModeratorApplication.objects.create(
+            candidateId=self.email,
+            status='PENDING',
+            motivation=motivation,
+            certificatePath=certificatePath,
+            testScore=testScore,
+        )
+        Notification.objects.create(
+            userId=self.email,
+            message=(
+                '✓ Twój wniosek o rolę moderatora został wysłany. '
+                'Administrator rozpatrzy go wkrótce.'
+            ),
+            link='/moderator/apply/',
+        )
+        return application
+
+    def rateModerator(self, workId, score, comment=''):
+        """Ocena sprawdzającego (1-5 gwiazdek) po opublikowanej ocenie pracy.
+        Jedna ocena na pracę — ponowne wystawienie nadpisuje poprzednią.
+        Zwraca ModeratorRating albo None, gdy ocena niemożliwa."""
+        try:
+            score = int(score)
+        except (TypeError, ValueError):
+            return None
+        if not 1 <= score <= 5:
+            return None
+        try:
+            work = Work.objects.get(pk=workId, studentId=self.email)
+        except Work.DoesNotExist:
+            return None
+        review = WorkReview.objects.filter(
+            workId=str(work.id), status=WorkReview.STATUS_PUBLISHED,
+        ).first()
+        if review is None:
+            return None  # można ocenić dopiero po otrzymaniu oceny pracy
+        rating, _created = ModeratorRating.objects.update_or_create(
+            workId=str(work.id),
+            studentId=self.email,
+            defaults={
+                'moderatorId': review.moderatorId,
+                'score': score,
+                'comment': comment or '',
+            },
+        )
+        return rating
+
+    # -------------------------
+    # Panel finansowy (FR-14) — dostępny dla moderatora i admina.
+    # -------------------------
+    def viewModeratorStats(self):
+        """Statystyki + zarobki za sprawdzone prace."""
+        from .services import StatisticsService
+        return StatisticsService().getModeratorStats(self.email)
+
+    def requestPayout(self):
+        """Zleca wypłatę dostępnego salda; tworzy Payout z numerem faktury."""
+        from .services import StatisticsService
+        stats = StatisticsService().getModeratorStats(self.email)
+        available = stats.get('available', 0.0)
+        if available <= 0:
+            return None
+        return Payout.create_for(self.email, available)
+
+    def reserveWork(self, workId):
+        """Rezerwuje pracę do sprawdzenia (UC39). Idempotentne —
+        jeśli moderator już ją miał, zwraca True. Po rezerwacji nikt inny
+        nie może przejąć pracy, a zleceniodawca dostaje powiadomienie
+        z kontaktem do sprawdzającego (rozliczenie indywidualne)."""
+        try:
+            work = Work.objects.get(pk=workId)
+        except Work.DoesNotExist:
+            return False
+
+        # Czy ktoś inny nie zarezerwował wcześniej?
+        if work.assignedModeratorId and work.assignedModeratorId != self.email:
+            return False
+
+        already_mine = work.assignedModeratorId == self.email
+        work.assignedModeratorId = self.email
+        work.status = Work.STATUS_IN_REVIEW
+        work.save(update_fields=['assignedModeratorId', 'status'])
+
+        if not already_mine:
+            Notification.objects.create(
+                userId=work.studentId,
+                message=(
+                    f'Twoja praca „{work.title}" została zarezerwowana do '
+                    f'sprawdzenia przez: {self.name} ({self.email}).'
+                ),
+                details=(
+                    f'Sprawdzający skontaktuje się z Tobą w sprawie ustalenia '
+                    f'płatności (rozliczenie indywidualne). Możesz też napisać '
+                    f'bezpośrednio na adres: {self.email}.'
+                ),
+                link=f'/works/{work.id}/',
+            )
+        return True
+
+
+
+class Student(User):
+    """Domyślna rola po rejestracji. Wszystkie metody „uczniowskie"
+    (diagnostyka, egzamin, materiały, prace, statystyki) są na klasie bazowej
+    User — dzięki temu mają je też Moderator i Admin."""
+    pass
 
 
 class Moderator(User):
-<<<<<<< HEAD
-    # Implementacja w Sprincie 2
-    def viewMaterialsToVerify(self): return []
-    def verifyMaterial(self, materialId, decision, comment): return None
-    def editMaterialTests(self, materialId, newQuestions): return False
-    def viewWorksToCheck(self): return []
-    def reserveWork(self, workId): return False
-    def checkWork(self, workId, reviewData): return None
-=======
     def viewMaterialsToVerify(self):
         """Zwraca listę materiałów do weryfikacji, posortowaną po priorytecie
         malejąco (najbardziej oczekiwane najpierw — UC36)."""
@@ -325,6 +519,7 @@ class Moderator(User):
         notification = Notification.objects.create(
             userId=material.authorId,
             message=msg_map.get(decision, f'Status materiału "{material.title}" się zmienił'),
+            details=(f'Komentarz moderatora: {comment}' if comment else ''),
         )
         if comment:
             Comment.objects.create(
@@ -351,23 +546,6 @@ class Moderator(User):
             ).order_by('submittedAt')
         )
 
-    def reserveWork(self, workId):
-        """Rezerwuje pracę do sprawdzenia (UC39). Idempotentne —
-        jeśli moderator już ją miał, zwraca True."""
-        try:
-            work = Work.objects.get(pk=workId)
-        except Work.DoesNotExist:
-            return False
-
-        # Czy ktoś inny nie zarezerwował wcześniej?
-        if work.assignedModeratorId and work.assignedModeratorId != self.email:
-            return False
-
-        work.assignedModeratorId = self.email
-        work.status = Work.STATUS_IN_REVIEW
-        work.save(update_fields=['assignedModeratorId', 'status'])
-        return True
-
     def checkWork(self, workId, reviewData: dict):
         """Tworzy WorkReview (szkic) lub zwraca istniejący (UC40)."""
         try:
@@ -386,21 +564,8 @@ class Moderator(User):
         )
         return review
 
->>>>>>> sprint-2
-    def viewModeratorStats(self): pass
-
 
 class Admin(User):
-<<<<<<< HEAD
-    # Implementacja w Sprincie 2/3
-    def viewSystemStats(self): return {}
-    def reviewModeratorApplications(self): return []
-    def acceptCandidate(self, applicationId): return False
-    def rejectCandidate(self, applicationId, reason): return False
-    def handleUserReports(self): return []
-    def reviewReport(self, reportId, decision): return False
-    def manageUserAccount(self, userId, newStatus, newRole): pass
-=======
     def viewSystemStats(self):
         """Statystyki dla dashboardu admina."""
         return {
@@ -418,13 +583,79 @@ class Admin(User):
             'works_pending': Work.objects.filter(
                 status__in=[Work.STATUS_PAID, Work.STATUS_IN_REVIEW]
             ).count(),
+            'applications_pending': ModeratorApplication.objects.filter(
+                status=ModeratorApplication.STATUS_PENDING
+            ).count(),
         }
 
     def reviewModeratorApplications(self):
-        return list(ModeratorApplication.objects.filter(status='PENDING'))
+        return list(
+            ModeratorApplication.objects.filter(status='PENDING').order_by('createdAt')
+        )
 
-    def acceptCandidate(self, applicationId): return False
-    def rejectCandidate(self, applicationId, reason): return False
+    def acceptCandidate(self, applicationId):
+        """FR-12: akceptuje wniosek — promuje Studenta na Moderatora.
+        Przy MTI tworzymy wiersz potomny Moderator dla istniejącego User
+        i usuwamy wiersz Student (rolę rozstrzyga middleware po tabeli potomnej)."""
+        try:
+            application = ModeratorApplication.objects.get(pk=applicationId)
+        except ModeratorApplication.DoesNotExist:
+            return False
+        if application.status != 'PENDING':
+            return False
+
+        promoted = promote_to_moderator(application.candidateId)
+        if not promoted:
+            return False
+
+        application.status = 'ACCEPTED'
+        application.reviewedAt = timezone.now()
+        application.reviewedBy = self.email
+        application.save(update_fields=['status', 'reviewedAt', 'reviewedBy'])
+
+        Notification.objects.create(
+            userId=application.candidateId,
+            message=(
+                'Gratulacje! Twój wniosek o rolę moderatora został zaakceptowany. '
+                'Po ponownym zalogowaniu zobaczysz panel moderatora.'
+            ),
+        )
+        return True
+
+    def rejectCandidate(self, applicationId, reason=''):
+        """FR-12: odrzuca wniosek o rolę moderatora."""
+        try:
+            application = ModeratorApplication.objects.get(pk=applicationId)
+        except ModeratorApplication.DoesNotExist:
+            return False
+        if application.status != 'PENDING':
+            return False
+
+        application.status = 'REJECTED'
+        application.decisionComment = reason
+        application.reviewedAt = timezone.now()
+        application.reviewedBy = self.email
+        application.save(update_fields=[
+            'status', 'decisionComment', 'reviewedAt', 'reviewedBy',
+        ])
+
+        Notification.objects.create(
+            userId=application.candidateId,
+            message='Twój wniosek o rolę moderatora został odrzucony.',
+            details=(f'Powód decyzji: {reason}' if reason else ''),
+        )
+        return True
+
+    def revokeModerator(self, moderatorEmail, reason=''):
+        """FR-12: odbiera uprawnienia moderatora (Moderator → Student)."""
+        if not demote_to_student(moderatorEmail):
+            return False
+        Notification.objects.create(
+            userId=moderatorEmail,
+            message='Twoje uprawnienia moderatora zostały cofnięte.',
+            details=(f'Powód decyzji: {reason}' if reason else ''),
+        )
+        return True
 
     def handleUserReports(self):
         """Lista nierozpatrzonych zgłoszeń."""
@@ -438,6 +669,21 @@ class Admin(User):
             return False
 
         report.review(decision, admin_email=self.email)
+
+        # Uznanie zgłoszenia za zasadne (RESOLVED) usuwa materiał, którego
+        # dotyczyło — wraz z powiadomieniem autora.
+        if decision == Report.STATUS_RESOLVED and report.targetType == Report.TARGET_MATERIAL:
+            material = Material.objects.filter(pk=report.targetId).first()
+            if material:
+                Notification.objects.create(
+                    userId=material.authorId,
+                    message=(
+                        f'Twój materiał „{material.title}" został usunięty po '
+                        f'rozpatrzeniu zgłoszenia (naruszenie regulaminu).'
+                    ),
+                    details=(f'Komentarz administratora: {comment}' if comment else ''),
+                )
+                material.delete()
 
         # Powiadomienie dla zgłaszającego
         msg_map = {
@@ -453,38 +699,67 @@ class Admin(User):
         Notification.objects.create(
             userId=report.reporterId,
             message=msg_map.get(decision, 'Twoje zgłoszenie zostało rozpatrzone.'),
+            details=(f'Komentarz administratora: {comment}' if comment else ''),
         )
         return True
 
-    def manageUserAccount(self, userId, newStatus, days=None):
+    def manageUserAccount(self, userId, newStatus, days=None, reason=''):
         """Blokada/odblokowanie konta (FR-11, UC48).
-        userId jest emailem usera. days=N oznacza blokadę tymczasową."""
+        userId jest emailem usera. days=N oznacza blokadę tymczasową —
+        zapisujemy termin końca w blockedUntil (auto-odblokowanie przy logowaniu)."""
         try:
             target = User.objects.get(email=userId)
         except User.DoesNotExist:
             return False
 
         target.status = newStatus
-        target.save(update_fields=['status'])
+        if newStatus == User.STATUS_BLOCKED:
+            target.blockedUntil = (
+                timezone.now() + timedelta(days=int(days)) if days else None
+            )
+        else:
+            target.blockedUntil = None
+        target.save(update_fields=['status', 'blockedUntil'])
 
         # Powiadomienie dla usera
         if newStatus == User.STATUS_BLOCKED:
-            msg = (f'Twoje konto zostało zablokowane na {days} dni.'
-                   if days else 'Twoje konto zostało zablokowane.')
+            if target.blockedUntil:
+                until = timezone.localtime(target.blockedUntil).strftime('%d.%m.%Y %H:%M')
+                msg = f'Twoje konto zostało zablokowane do {until}.'
+            else:
+                msg = 'Twoje konto zostało zablokowane bezterminowo.'
             msg += ' Powód: naruszenie regulaminu. W razie pytań skontaktuj się z administracją.'
         elif newStatus == User.STATUS_ACTIVE:
             msg = 'Twoje konto zostało odblokowane. Witamy z powrotem.'
         else:
             msg = f'Status Twojego konta zmieniony na: {newStatus}.'
 
-        Notification.objects.create(userId=target.email, message=msg)
+        Notification.objects.create(
+            userId=target.email, message=msg,
+            details=(f'Powód: {reason}' if reason else ''),
+        )
 
         # Zablokowany user = wylogowanie wszystkich sesji
         if newStatus != User.STATUS_ACTIVE:
             Session.objects.filter(userId=target.email).delete()
 
         return True
->>>>>>> sprint-2
+
+    def deleteMaterial(self, materialId, reason='') -> bool:
+        """FR-11/O-06: admin może usunąć dowolny materiał."""
+        material = Material.objects.filter(pk=materialId).first()
+        if not material:
+            return False
+        Notification.objects.create(
+            userId=material.authorId,
+            message=(
+                f'Twój materiał „{material.title}" został usunięty przez '
+                f'administratora.'
+            ),
+            details=(f'Powód: {reason}' if reason else ''),
+        )
+        material.delete()
+        return True
 
 
 # ============================================================
@@ -525,6 +800,32 @@ class EmailVerificationToken(models.Model):
 
     def verify(self) -> bool:
         return self.expiresAt > timezone.now()
+
+
+def _default_reset_token() -> str:
+    return uuid.uuid4().hex
+
+
+def _default_reset_expiry():
+    return timezone.now() + timedelta(hours=1)
+
+
+class PasswordResetToken(models.Model):
+    """Token resetu hasła (funkcja „Zapomniałem hasła"). Ważny 1h, jednorazowy."""
+    userId = models.CharField(max_length=255, db_index=True)
+    token = models.CharField(max_length=64, unique=True, default=_default_reset_token)
+    expiresAt = models.DateTimeField(default=_default_reset_expiry)
+    used = models.BooleanField(default=False)
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def issue(cls, email: str) -> 'PasswordResetToken':
+        """Tworzy świeży token, unieważniając wcześniejsze dla tego maila."""
+        cls.objects.filter(userId=email, used=False).update(used=True)
+        return cls.objects.create(userId=email)
+
+    def is_valid(self) -> bool:
+        return (not self.used) and self.expiresAt > timezone.now()
 
 
 # ============================================================
@@ -608,8 +909,6 @@ class FileAttachment(models.Model):
         blank=True,
         related_name='attachments',
     )
-<<<<<<< HEAD
-=======
     work = models.ForeignKey(
         'Work',
         on_delete=models.CASCADE,
@@ -617,7 +916,6 @@ class FileAttachment(models.Model):
         blank=True,
         related_name='attachments',
     )
->>>>>>> sprint-2
 
     def upload(self, fileStream) -> bool:
         try:
@@ -642,9 +940,14 @@ class Test(models.Model):
     TYPE_MATERIAL = 'MATERIAL'
     TYPE_MODERATOR = 'MODERATOR'
 
+    TYPE_EXAM = 'EXAM'
+
     title = models.CharField(max_length=255)
     type = models.CharField(max_length=50, default=TYPE_MATERIAL)
     materialId = models.CharField(max_length=255, blank=True)
+    # Sprint 3 (FR-06): limit czasu w minutach. 0 = bez limitu (testy materiałowe,
+    # diagnostyka). Symulacja egzaminu ustawia np. 60.
+    durationMinutes = models.IntegerField(default=0)
 
     def addQuestion(self, question: 'Question') -> bool:
         question.test = self
@@ -729,31 +1032,6 @@ class Vote(models.Model):
     materialId = models.CharField(max_length=255)
     votedAt = models.DateTimeField(auto_now_add=True)
 
-<<<<<<< HEAD
-
-class Notification(models.Model):
-    userId = models.CharField(max_length=255)
-    message = models.TextField()
-    isRead = models.BooleanField(default=False)
-
-    def send(self): pass
-    def markAsRead(self):
-        self.isRead = True
-        self.save()
-
-
-class Work(models.Model):
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    studentId = models.CharField(max_length=255)
-    packageId = models.CharField(max_length=255)
-    status = models.CharField(max_length=50, default='PENDING')
-    assignedModeratorId = models.CharField(max_length=255, null=True, blank=True)
-
-    @classmethod
-    def submit(cls, files, packageId): return None
-    def assignModerator(self, moderatorId): return False
-=======
     class Meta:
         # Jeden user nie może oddać dwóch głosów na ten sam materiał (FR-09)
         unique_together = [('userId', 'materialId')]
@@ -763,6 +1041,9 @@ class Work(models.Model):
 class Notification(models.Model):
     userId = models.CharField(max_length=255, db_index=True)
     message = models.TextField()
+    # Dłuższa treść do wglądu (np. komentarz moderatora/admina) — w UI
+    # rozwijana przyciskiem „Pokaż szczegóły".
+    details = models.TextField(blank=True, default='')
     link = models.CharField(max_length=500, blank=True)  # URL dokąd ma prowadzić klik
     isRead = models.BooleanField(default=False)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -832,41 +1113,12 @@ class Work(models.Model):
         self.status = self.STATUS_IN_REVIEW
         self.save(update_fields=['assignedModeratorId', 'status'])
         return True
->>>>>>> sprint-2
 
 
 class Package(models.Model):
     name = models.CharField(max_length=255)
     price = models.FloatField(default=0.0)
     scope = models.CharField(max_length=255, blank=True)
-<<<<<<< HEAD
-
-    def select(self): return self
-
-
-class PaymentTransaction(models.Model):
-    workId = models.CharField(max_length=255)
-    userId = models.CharField(max_length=255)
-    amount = models.FloatField(default=0.0)
-    status = models.CharField(max_length=50, default='PENDING')
-    method = models.CharField(max_length=50, blank=True)
-
-    def process(self): return False
-
-
-class WorkReview(models.Model):
-    workId = models.CharField(max_length=255)
-    moderatorId = models.CharField(max_length=255)
-    grade = models.CharField(max_length=50, blank=True)
-    generalComment = models.TextField(blank=True)
-    status = models.CharField(max_length=50, default='DRAFT')
-
-    def addErrorMark(self, mark): return mark
-    def addComment(self, comment): return comment
-    def publish(self):
-        self.status = 'PUBLISHED'
-        self.save()
-=======
     description = models.TextField(blank=True)
 
     class Meta:
@@ -888,6 +1140,9 @@ class PaymentTransaction(models.Model):
     METHOD_BLIK = 'BLIK'
     METHOD_CARD = 'CARD'
     METHOD_TRANSFER = 'TRANSFER'
+    # Rozliczenie indywidualne — student i sprawdzający ustalają płatność
+    # bezpośrednio między sobą (poza platformą).
+    METHOD_DIRECT = 'DIRECT'
 
     workId = models.CharField(max_length=255, db_index=True)
     userId = models.CharField(max_length=255)
@@ -972,30 +1227,16 @@ class WorkReview(models.Model):
                     f'Twoja praca "{work.title}" została sprawdzona. '
                     f'Ocena: {self.grade or "—"}. Zobacz szczegóły.'
                 ),
+                details=(f'Komentarz sprawdzającego: {self.generalComment}'
+                         if self.generalComment else ''),
                 link=f'/works/{work.id}/review/',
             )
         except Work.DoesNotExist:
             pass
->>>>>>> sprint-2
         return True
 
 
 class ErrorMark(models.Model):
-<<<<<<< HEAD
-    reviewId = models.CharField(max_length=255)
-    textSnippet = models.TextField()
-    type = models.CharField(max_length=50)
-    positionInText = models.CharField(max_length=255, blank=True)
-
-
-class MaterialVerification(models.Model):
-    materialId = models.CharField(max_length=255)
-    moderatorId = models.CharField(max_length=255)
-    decision = models.CharField(max_length=50, blank=True)
-
-    def submit(self, decision, comment):
-        self.decision = decision
-=======
     TYPE_GRAMMAR = 'GRAMMAR'      # czerwone
     TYPE_UNNATURAL = 'UNNATURAL'  # żółte
     TYPE_POSITIVE = 'POSITIVE'    # zielone
@@ -1039,28 +1280,40 @@ class MaterialVerification(models.Model):
     def submit(self, decision, comment=''):
         self.decision = decision
         self.comment = comment
->>>>>>> sprint-2
         self.save()
         return True
 
 
 class ModeratorApplication(models.Model):
-    candidateId = models.CharField(max_length=255)
-    status = models.CharField(max_length=50, default='PENDING')
+    STATUS_PENDING = 'PENDING'
+    STATUS_ACCEPTED = 'ACCEPTED'
+    STATUS_REJECTED = 'REJECTED'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Oczekuje'),
+        (STATUS_ACCEPTED, 'Zaakceptowany'),
+        (STATUS_REJECTED, 'Odrzucony'),
+    ]
+
+    candidateId = models.CharField(max_length=255, db_index=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING)
     testResultId = models.CharField(max_length=255, blank=True)
+    # Wynik (%) testu kwalifikacyjnego wypełnianego przy składaniu wniosku.
+    testScore = models.FloatField(null=True, blank=True)
+    motivation = models.TextField(blank=True)            # FR-12: dlaczego chce zostać moderatorem
+    certificatePath = models.CharField(max_length=500, blank=True)  # FR-02: dyplom/certyfikat
+    decisionComment = models.TextField(blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True, null=True)
+    reviewedAt = models.DateTimeField(null=True, blank=True)
+    reviewedBy = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['createdAt']
 
     def submit(self): return True
     def evaluate(self): return True
 
 
 class Report(models.Model):
-<<<<<<< HEAD
-    reporterId = models.CharField(max_length=255)
-    targetType = models.CharField(max_length=50)
-    targetId = models.CharField(max_length=255)
-    reason = models.TextField()
-    status = models.CharField(max_length=50, default='PENDING')
-=======
     TARGET_MATERIAL = 'MATERIAL'
     TARGET_USER = 'USER'
     TARGET_COMMENT = 'COMMENT'
@@ -1091,28 +1344,20 @@ class Report(models.Model):
     class Meta:
         ordering = ['-createdAt']
         indexes = [models.Index(fields=['status', 'createdAt'])]
->>>>>>> sprint-2
 
     def submit(self):
         self.save()
         return True
 
-<<<<<<< HEAD
-    def review(self, decision):
-        self.status = decision
-=======
     def review(self, decision, admin_email=''):
         """decision: 'RESOLVED' (potwierdzone) | 'DISMISSED' (odrzucone)."""
         self.status = decision
         self.resolvedAt = timezone.now()
         self.resolvedBy = admin_email
->>>>>>> sprint-2
         self.save()
         return True
 
 
-<<<<<<< HEAD
-=======
 # ============================================================
 # Comment — dodajemy w Sprincie 2 (było w classDiagram.md)
 # ============================================================
@@ -1127,7 +1372,251 @@ class Comment(models.Model):
         ordering = ['-createdAt']
 
 
->>>>>>> sprint-2
 class Statistics(models.Model):
-    """Placeholder — rozbudowa w Sprincie 3."""
+    """Placeholder — rozbudowa w Sprincie 3 (patrz UserStats poniżej)."""
     pass
+
+
+# ============================================================
+# Sprint 3 — symulacja egzaminu (FR-06), gamifikacja (FR-07),
+# wypłaty moderatorów (FR-14)
+# ============================================================
+class ExamAttempt(models.Model):
+    """Pojedyncze podejście studenta do symulacji egzaminu (FR-06).
+
+    Twardy timer jest egzekwowany SERWEROWO: przy starcie zapisujemy
+    `deadline = startedAt + durationMinutes`. Po przekroczeniu deadline
+    odpowiedzi nie są już przyjmowane (`is_expired()`), niezależnie od tego
+    co robi przeglądarka. Zegar po stronie klienta to tylko UX.
+    """
+    STATUS_IN_PROGRESS = 'IN_PROGRESS'
+    STATUS_SUBMITTED = 'SUBMITTED'
+    STATUS_CHOICES = [
+        (STATUS_IN_PROGRESS, 'W trakcie'),
+        (STATUS_SUBMITTED, 'Zakończone'),
+    ]
+
+    testId = models.CharField(max_length=255, db_index=True)
+    userId = models.CharField(max_length=255, db_index=True)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_IN_PROGRESS)
+    answers = models.JSONField(default=dict)        # autozapis (NFR-02)
+    score = models.FloatField(default=0.0)
+    areaScores = models.JSONField(default=dict)
+    pointsAwarded = models.IntegerField(default=0)
+    startedAt = models.DateTimeField(auto_now_add=True)
+    deadline = models.DateTimeField(null=True, blank=True)
+    submittedAt = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-startedAt']
+        indexes = [models.Index(fields=['userId', 'status'])]
+
+    @classmethod
+    def start(cls, test: 'Test', userId: str) -> 'ExamAttempt':
+        """Tworzy nowe podejście i ustawia twardy deadline."""
+        now = timezone.now()
+        duration = test.durationMinutes or 0
+        deadline = now + timedelta(minutes=duration) if duration else None
+        return cls.objects.create(
+            testId=str(test.id), userId=str(userId),
+            status=cls.STATUS_IN_PROGRESS, deadline=deadline,
+        )
+
+    def is_expired(self) -> bool:
+        return self.deadline is not None and timezone.now() > self.deadline
+
+    def seconds_left(self) -> int:
+        if self.deadline is None:
+            return 0
+        delta = (self.deadline - timezone.now()).total_seconds()
+        return max(0, int(delta))
+
+    def submit(self, answers: dict | None = None) -> 'ExamAttempt':
+        """Kończy podejście: liczy wynik, przyznaje punkty (FR-07).
+        Idempotentne — drugi submit nic nie zmienia."""
+        if self.status == self.STATUS_SUBMITTED:
+            return self
+        if answers is not None:
+            self.answers = answers
+
+        try:
+            test = Test.objects.get(pk=self.testId)
+        except Test.DoesNotExist:
+            test = None
+
+        if test is not None:
+            self.score = test.calculateScore(self.answers)
+            # Wyniki per obszar (te same area co w diagnostyce)
+            area_stats: dict[str, list[int]] = {}
+            for q in test.questions.all():
+                area = q.area or 'general'
+                area_stats.setdefault(area, [0, 0])
+                area_stats[area][1] += 1
+                if str(self.answers.get(str(q.id), '')).strip() == q.correctAnswer.strip():
+                    area_stats[area][0] += 1
+            self.areaScores = {
+                a: round(100.0 * c / t, 2) if t else 0.0
+                for a, (c, t) in area_stats.items()
+            }
+
+        # Gamifikacja (FR-07): punkty = zaokrąglony wynik procentowy.
+        self.pointsAwarded = int(round(self.score))
+        self.status = self.STATUS_SUBMITTED
+        self.submittedAt = timezone.now()
+        self.save()
+
+        UserStats.record_exam(self.userId, self.pointsAwarded)
+        return self
+
+
+class UserStats(models.Model):
+    """Zagregowane statystyki + punkty rankingowe użytkownika (FR-07).
+
+    Klucz to email (spójnie z resztą modeli, które trzymają userId jako email).
+    """
+    userId = models.CharField(max_length=255, unique=True, db_index=True)
+    points = models.IntegerField(default=0)
+    examsCompleted = models.IntegerField(default=0)
+    diagnosticsCompleted = models.IntegerField(default=0)
+    bestExamScore = models.FloatField(default=0.0)
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-points']
+
+    @classmethod
+    def for_user(cls, userId: str) -> 'UserStats':
+        stats, _ = cls.objects.get_or_create(userId=str(userId))
+        return stats
+
+    @classmethod
+    def record_exam(cls, userId: str, points: int) -> 'UserStats':
+        stats = cls.for_user(userId)
+        stats.points = (stats.points or 0) + max(0, points)
+        stats.examsCompleted = (stats.examsCompleted or 0) + 1
+        if points > stats.bestExamScore:
+            stats.bestExamScore = points
+        stats.save(update_fields=[
+            'points', 'examsCompleted', 'bestExamScore', 'updatedAt',
+        ])
+        return stats
+
+    @classmethod
+    def record_diagnostic(cls, userId: str, points: int = 10) -> 'UserStats':
+        stats = cls.for_user(userId)
+        stats.points = (stats.points or 0) + max(0, points)
+        stats.diagnosticsCompleted = (stats.diagnosticsCompleted or 0) + 1
+        stats.save(update_fields=['points', 'diagnosticsCompleted', 'updatedAt'])
+        return stats
+
+
+class Payout(models.Model):
+    """Wypłata zarobków moderatora (FR-14)."""
+    STATUS_PENDING = 'PENDING'
+    STATUS_PAID = 'PAID'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Oczekuje na realizację'),
+        (STATUS_PAID, 'Zrealizowana'),
+    ]
+
+    moderatorId = models.CharField(max_length=255, db_index=True)
+    amount = models.FloatField(default=0.0)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    invoiceNumber = models.CharField(max_length=64, blank=True)
+    requestedAt = models.DateTimeField(auto_now_add=True)
+    paidAt = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requestedAt']
+
+    @classmethod
+    def create_for(cls, moderatorId: str, amount: float) -> 'Payout':
+        payout = cls.objects.create(
+            moderatorId=str(moderatorId),
+            amount=round(amount, 2),
+            status=cls.STATUS_PENDING,
+        )
+        # Numer faktury: FV/<rok>/<id> — zgodnie z O-02 (dokumentacja skarbowa)
+        payout.invoiceNumber = f'FV/{timezone.now().year}/{payout.id:05d}'
+        payout.save(update_fields=['invoiceNumber'])
+        Notification.objects.create(
+            userId=str(moderatorId),
+            message=(
+                f'Zlecono wypłatę {payout.amount:.2f} zł '
+                f'(faktura {payout.invoiceNumber}). Realizacja do 7 dni roboczych.'
+            ),
+        )
+        return payout
+
+
+class ModeratorRating(models.Model):
+    """Ocena sprawdzającego wystawiona przez zleceniodawcę (1-5 gwiazdek)
+    po opublikowanej ocenie pracy. Jedna ocena na pracę."""
+    workId = models.CharField(max_length=255, db_index=True)
+    studentId = models.CharField(max_length=255, db_index=True)
+    moderatorId = models.CharField(max_length=255, db_index=True)
+    score = models.PositiveSmallIntegerField()  # 1-5
+    comment = models.TextField(blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('workId', 'studentId')]
+
+    @classmethod
+    def average_for(cls, moderator_email):
+        """Średnia ocen i liczba głosów dla danego sprawdzającego."""
+        from django.db.models import Avg, Count
+        agg = cls.objects.filter(moderatorId=moderator_email).aggregate(
+            avg=Avg('score'), cnt=Count('id'),
+        )
+        return (round(agg['avg'], 2) if agg['avg'] is not None else None,
+                agg['cnt'] or 0)
+
+
+# ============================================================
+# Helpery promocji/degradacji ról (FR-12) — multi-table inheritance.
+# Tworzymy/usuwamy wiersz potomny dla istniejącego wiersza User; rolę
+# rozstrzyga SessionAuthMiddleware._resolve_role po tabeli potomnej.
+#
+# UWAGA: nie wolno usuwać roli przez `Student.objects.delete()` — w MTI
+# usunięcie instancji potomnej KASKADOWO usuwa też wiersz rodzica (User).
+# Dlatego wiersz tabeli potomnej kasujemy surowym SQL-em (tylko ta tabela).
+# ============================================================
+def _delete_child_row(child_model, pk) -> None:
+    from django.db import connection
+    table = child_model._meta.db_table
+    pk_col = child_model._meta.pk.column  # 'user_ptr_id'
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f'DELETE FROM "{table}" WHERE "{pk_col}" = %s', [pk]
+        )
+
+
+def promote_to_moderator(email: str) -> bool:
+    try:
+        base = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return False
+    if Moderator.objects.filter(pk=base.pk).exists():
+        return True  # już moderator
+    # Wstaw wiersz potomny Moderator wskazujący na ten sam User (raw=True →
+    # zapisujemy tylko tabelę lokalną, bez ponownego INSERT-u rodzica).
+    mod = Moderator(user_ptr_id=base.pk)
+    mod.save_base(raw=True)
+    # Usuń TYLKO wiersz potomny Student (User zostaje nietknięty).
+    _delete_child_row(Student, base.pk)
+    return True
+
+
+def demote_to_student(email: str) -> bool:
+    try:
+        base = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return False
+    if not Moderator.objects.filter(pk=base.pk).exists():
+        return False
+    if not Student.objects.filter(pk=base.pk).exists():
+        st = Student(user_ptr_id=base.pk)
+        st.save_base(raw=True)
+    _delete_child_row(Moderator, base.pk)
+    return True
