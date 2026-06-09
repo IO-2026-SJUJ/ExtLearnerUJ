@@ -81,8 +81,6 @@ class VerifyEmailForm(forms.Form):
         if not code.isdigit():
             raise ValidationError('Kod musi składać się z cyfr.')
         return code
-<<<<<<< HEAD
-=======
 
 
 # ============================================================
@@ -194,11 +192,15 @@ class VerifyMaterialForm(forms.Form):
 # ============================================================
 # Sprint 2 · tydzień 2 — prace pisemne, płatności, edytor, admin
 # ============================================================
+# Prace pisemne akceptują te same typy plików, co wniosek o rolę moderatora
+# (PDF/JPG/PNG), plus formaty dokumentów tekstowych.
 WORK_ALLOWED_TYPES = {
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
+    'image/jpeg',
+    'image/png',
 }
 
 
@@ -220,7 +222,7 @@ class WorkForm(forms.Form):
     attachment = forms.FileField(
         label='Plik z pracą (opcjonalnie)',
         required=False,
-        help_text='PDF, DOCX lub TXT. Max 10 MB.',
+        help_text='PDF, DOC/DOCX, TXT, JPG lub PNG. Max 10 MB.',
     )
     package = forms.ModelChoiceField(
         queryset=None,  # ustawiamy w __init__
@@ -247,7 +249,7 @@ class WorkForm(forms.Form):
         if f.content_type not in WORK_ALLOWED_TYPES:
             raise ValidationError(
                 f'Niedozwolony typ pliku: {f.content_type}. '
-                'Akceptujemy: PDF, DOCX, TXT.'
+                'Akceptujemy: PDF, DOC/DOCX, TXT, JPG, PNG.'
             )
         return f
 
@@ -329,4 +331,115 @@ class ReviewReportForm(forms.Form):
         label='Notatka wewnętrzna (opcjonalnie)',
         widget=forms.Textarea(attrs={'rows': 3}),
     )
->>>>>>> sprint-2
+
+
+# ============================================================
+# Sprint 3 — wniosek o rolę moderatora (FR-12 / FR-02)
+# ============================================================
+CERTIFICATE_ALLOWED_TYPES = {
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+}
+
+
+class ModeratorApplicationForm(forms.Form):
+    """Wniosek studenta o przyznanie roli moderatora (FR-12).
+    Pole certyfikatu/dyplomu realizuje FR-02."""
+    motivation = forms.CharField(
+        min_length=30, max_length=2000,
+        label='Dlaczego chcesz zostać moderatorem?',
+        widget=forms.Textarea(attrs={
+            'rows': 6, 'autofocus': True,
+            'placeholder': 'Opisz swoje doświadczenie z językiem angielskim, '
+                           'certyfikaty, motywację (min. 30 znaków).',
+        }),
+    )
+    certificate = forms.FileField(
+        label='Certyfikat / dyplom (opcjonalnie)',
+        required=False,
+        help_text='PDF, JPG lub PNG. Max 10 MB. Np. CAE/CPE, dyplom filologii.',
+    )
+
+    def clean_certificate(self):
+        f = self.cleaned_data.get('certificate')
+        if f is None:
+            return None
+        if f.size > MAX_UPLOAD_SIZE_BYTES:
+            raise ValidationError(
+                f'Plik jest za duży ({f.size // 1024} KB). '
+                f'Maksymalnie {MAX_UPLOAD_SIZE_BYTES // (1024*1024)} MB.'
+            )
+        if f.content_type not in CERTIFICATE_ALLOWED_TYPES:
+            raise ValidationError(
+                f'Niedozwolony typ pliku: {f.content_type}. '
+                'Akceptujemy: PDF, JPG, PNG.'
+            )
+        return f
+
+
+class ReviewApplicationForm(forms.Form):
+    """Decyzja admina o wniosku moderatorskim (FR-12)."""
+    DECISION_CHOICES = [
+        ('ACCEPT', 'Zaakceptuj — przyznaj rolę moderatora'),
+        ('REJECT', 'Odrzuć wniosek'),
+    ]
+    decision = forms.ChoiceField(
+        choices=DECISION_CHOICES,
+        widget=forms.RadioSelect,
+        label='Decyzja',
+    )
+    comment = forms.CharField(
+        required=False,
+        max_length=1000,
+        label='Komentarz dla kandydata (opcjonalny)',
+        widget=forms.Textarea(attrs={'rows': 3}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('decision') == 'REJECT' and not cleaned.get('comment', '').strip():
+            self.add_error('comment', 'Przy odrzuceniu podaj powód dla kandydata.')
+        return cleaned
+
+
+# ============================================================
+# Sprint 3 — reset hasła („Zapomniałem hasła")
+# ============================================================
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(
+        label='Adres e-mail',
+        widget=forms.EmailInput(attrs={'autocomplete': 'email', 'autofocus': True}),
+        help_text='Wyślemy link do ustawienia nowego hasła.',
+    )
+
+    def clean_email(self):
+        return self.cleaned_data['email'].lower().strip()
+
+
+class ResetPasswordForm(forms.Form):
+    password = forms.CharField(
+        min_length=8,
+        label='Nowe hasło',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password', 'autofocus': True}),
+        help_text='Minimum 8 znaków, nie samo z cyfr.',
+    )
+    password_confirm = forms.CharField(
+        label='Powtórz nowe hasło',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+    )
+
+    def clean_password(self):
+        pw = self.cleaned_data['password']
+        try:
+            validate_password(pw)
+        except ValidationError as e:
+            raise ValidationError(list(e.messages))
+        return pw
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('password') and cleaned.get('password_confirm'):
+            if cleaned['password'] != cleaned['password_confirm']:
+                self.add_error('password_confirm', 'Hasła muszą być takie same.')
+        return cleaned

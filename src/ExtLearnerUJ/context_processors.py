@@ -4,11 +4,6 @@
 def app_user(request):
     """Udostępnia `app_user` i `app_session` w szablonach.
     Dzięki temu base.html może pokazywać stan zalogowania."""
-<<<<<<< HEAD
-    return {
-        'app_user': getattr(request, 'app_user', None),
-        'app_session': getattr(request, 'app_session', None),
-=======
     user = getattr(request, 'app_user', None)
 
     # Flagi ról — używane w base.html do wyboru widocznej nawigacji.
@@ -36,5 +31,4 @@ def app_user(request):
         'is_moderator': is_moderator,
         'is_admin': is_admin,
         'unread_notifications': unread_notifications,
->>>>>>> sprint-2
     }
