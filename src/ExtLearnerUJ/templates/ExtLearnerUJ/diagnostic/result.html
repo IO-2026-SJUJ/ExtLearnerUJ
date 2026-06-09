@@ -26,7 +26,8 @@
                 <div class="area-bar__label">{{ area }}</div>
                 <div class="area-bar__track">
                     <div class="area-bar__fill {% if score < 50 %}area-bar__fill--weak{% endif %}"
-                         data-score="{{ score }}"
+                         data-score="{% widthratio score 100 100 %}"
+                         style="width: {% widthratio score 100 100 %}%"
                          aria-label="{{ area }}: {{ score }}%"></div>
                 </div>
                 <div class="area-bar__value">{{ score }}%</div>
@@ -42,7 +43,8 @@
                 {% for area in weak_areas %}
                     <strong class="mono" style="color: var(--color-accent);">{{ area }}</strong>{% if not forloop.last %}, {% endif %}
                 {% endfor %}.
-                W Sprincie 2 pojawi się tu link do rekomendowanych materiałów (FR-05).
+                W obszarach poniżej 50% rekomendujemy materiały — zobacz je na
+                <a href="{% url 'dashboard' %}" style="color: var(--color-accent);">panelu głównym</a>.
             </p>
         </div>
     {% else %}
