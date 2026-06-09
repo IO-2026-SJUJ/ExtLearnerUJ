@@ -65,27 +65,17 @@
                     </a>
                 </li>
                 <li>
-<<<<<<< HEAD
-=======
                     <a href="{% url 'material_create' %}"
                        style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
                         → Dodaj własny materiał
                     </a>
                 </li>
                 <li>
->>>>>>> sprint-2
                     <a href="{% url 'diagnostic_start' %}"
                        style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
                         → Test diagnostyczny
                     </a>
                 </li>
-<<<<<<< HEAD
-                <li style="color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--fs-xs); text-decoration: line-through;">
-                    · Dodaj własny materiał (Sprint 2)
-                </li>
-                <li style="color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--fs-xs); text-decoration: line-through;">
-                    · Wyślij pracę do sprawdzenia (Sprint 2)
-=======
                 <li>
                     <a href="{% url 'work_new' %}"
                        style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
@@ -97,11 +87,64 @@
                        style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
                         → Powiadomienia
                     </a>
->>>>>>> sprint-2
                 </li>
+                <li>
+                    <a href="{% url 'exam_start' %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
+                        → Symulacja egzaminu (z timerem)
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'my_stats' %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
+                        → Moje statystyki i raport PDF
+                    </a>
+                </li>
+                {% if not is_moderator %}
+                <li>
+                    <a href="{% url 'apply_moderator' %}"
+                       style="font-family: var(--font-mono); font-size: var(--fs-sm); text-decoration: none; color: var(--color-ink);">
+                        → Zostań moderatorem
+                    </a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </div>
+
+    {% if recommendations %}
+    <section class="reveal reveal-4" style="margin-bottom: var(--sp-7);">
+        <div class="panel__header" style="border-bottom: var(--border-hair); margin-bottom: var(--sp-5); padding-bottom: var(--sp-3);">
+            <h2>Rekomendowane dla Ciebie</h2>
+            <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">na podstawie diagnostyki</span>
+        </div>
+        <p style="color: var(--color-ink-muted); margin-bottom: var(--sp-5);">
+            Materiały z obszarów, w których wypadłeś poniżej 50% — tu warto zacząć.
+        </p>
+        {% for rec in recommendations %}
+            <div style="margin-bottom: var(--sp-5);">
+                <p class="eyebrow" style="margin: 0 0 var(--sp-3);">
+                    {{ rec.area }} · Twój wynik: <strong style="color: var(--color-accent);">{{ rec.score }}%</strong>
+                </p>
+                {% if rec.materials %}
+                    <div class="grid">
+                        {% for m in rec.materials %}
+                            <a href="{% url 'material_detail' m.id %}" class="card" style="text-decoration: none; color: inherit;">
+                                <div class="card__eyebrow">{{ m.category }}</div>
+                                <h3 class="card__title">{{ m.title }}</h3>
+                                <div class="card__meta"><span class="chip chip--verified">✓ Zweryfikowany</span></div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="mono" style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
+                        Brak zweryfikowanych materiałów w tej kategorii — zajrzyj później.
+                    </p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </section>
+    {% endif %}
 
     <section class="reveal reveal-4">
         <div class="panel__header" style="border-bottom: var(--border-hair); margin-bottom: var(--sp-5); padding-bottom: var(--sp-3);">
@@ -135,6 +178,13 @@
                 <p>Brak materiałów. Uruchom <span class="mono">python manage.py seed_materials</span> żeby zobaczyć przykłady.</p>
             </div>
         {% endif %}
+    </section>
+
+    <section class="reveal" style="margin-top: var(--sp-7); padding-top: var(--sp-4); border-top: var(--border-hair);">
+        <p style="font-size: var(--fs-sm); color: var(--color-ink-muted); margin: 0;">
+            Ustawienia konta ·
+            <a href="{% url 'delete_account' %}" style="color: var(--color-accent);">Usuń konto i moje dane</a>
+        </p>
     </section>
 </div>
 {% endblock %}
