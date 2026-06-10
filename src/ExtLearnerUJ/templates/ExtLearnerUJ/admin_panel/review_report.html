@@ -84,6 +84,15 @@
                            class="mono" style="display: inline-block; margin-top: var(--sp-3); font-size: var(--fs-xs);">
                             → Zobacz pełny materiał
                         </a>
+                        {% if target_author %}
+                            <a href="{% url 'admin_user_detail' target_author.email %}"
+                               class="mono" style="display: block; margin-top: var(--sp-2); font-size: var(--fs-xs); color: var(--color-accent);">
+                                → Profil autora ({{ target_author.email }}) — można zbanować
+                            </a>
+                        {% endif %}
+                        <p class="mono" style="margin-top: var(--sp-3); font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                            Uwaga: uznanie zgłoszenia za zasadne usunie ten materiał.
+                        </p>
                     {% elif report.targetType == 'USER' %}
                         <strong>{{ target.name }}</strong>
                         <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted); margin-top: var(--sp-2);">

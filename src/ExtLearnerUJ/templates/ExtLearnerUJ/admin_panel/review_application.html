@@ -1,0 +1,55 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Rozpatrz wniosek — Administracja{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Wniosek moderatorski</p>
+    <h1 class="reveal reveal-2">{{ candidate.name|default:application.candidateId }}</h1>
+    <p class="reveal reveal-3 mono" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        {{ application.candidateId }} · złożono {{ application.createdAt|date:"j F Y, H:i" }}
+    </p>
+
+    <div class="panel reveal reveal-3">
+        {% if application.testScore is not None %}
+            <div style="display: flex; align-items: baseline; gap: var(--sp-3); margin-bottom: var(--sp-5); padding: var(--sp-4) var(--sp-5); border: var(--border-hair);">
+                <span class="mono" style="font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">
+                    Wynik testu kwalifikacyjnego
+                </span>
+                <span style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--color-accent);">
+                    {{ application.testScore|floatformat:0 }}%
+                </span>
+            </div>
+        {% endif %}
+        <div class="panel__header"><h2>Motywacja</h2></div>
+        <p style="white-space: pre-wrap; line-height: 1.6;">{{ application.motivation }}</p>
+        {% if application.certificatePath %}
+            <p style="margin-top: var(--sp-4);">
+                <a href="{{ MEDIA_URL }}{{ application.certificatePath }}" target="_blank" rel="noopener" class="btn btn--ghost">
+                    📎 Otwórz certyfikat
+                </a>
+            </p>
+        {% endif %}
+    </div>
+
+    {% if application.status == 'PENDING' %}
+        <form method="post" class="form reveal reveal-4" style="margin-top: var(--sp-6);">
+            {% csrf_token %}
+            {% with field=form.decision %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+            {% with field=form.comment %}{% include 'ExtLearnerUJ/_form_field.html' %}{% endwith %}
+            <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-4);">
+                <button type="submit" class="btn btn--accent btn--lg">Zapisz decyzję</button>
+                <a href="{% url 'admin_applications' %}" class="btn btn--ghost btn--lg">Anuluj</a>
+            </div>
+        </form>
+    {% else %}
+        <div class="reveal reveal-4" style="margin-top: var(--sp-6); padding: var(--sp-5); background: var(--color-paper-dark);">
+            <p style="margin: 0;">Wniosek już rozpatrzony: <strong>{{ application.get_status_display }}</strong>
+                {% if application.reviewedBy %} przez {{ application.reviewedBy }}{% endif %}.</p>
+        </div>
+        <div style="margin-top: var(--sp-6);">
+            <a href="{% url 'admin_applications' %}" class="btn">← Wróć do listy</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

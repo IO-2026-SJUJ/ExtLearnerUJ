@@ -71,7 +71,28 @@
             {{ target_user.status }}
         {% endif %}
         &nbsp;·&nbsp; Rejestracja: {{ target_user.registrationDate|date:"j F Y" }}
+        {% if rating_count %}
+        <div class="reveal reveal-3" style="display: flex; align-items: baseline; gap: var(--sp-3); margin: var(--sp-4) 0; padding: var(--sp-4) var(--sp-5); border: var(--border-hair);">
+            <span class="mono" style="font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-ink-muted);">
+                Średnia ocen od zleceniodawców
+            </span>
+            <span style="font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--color-accent);">
+                ★ {{ rating_avg }}
+            </span>
+            <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                / 5 · {{ rating_count }} ocen(y)
+            </span>
+        </div>
+    {% endif %}
+    {% if target_is_moderator %}&nbsp;·&nbsp; <span style="color: var(--color-accent);">🎓 Moderator</span>{% endif %}
     </div>
+
+    {% if target_is_moderator %}
+        <form method="post" action="{% url 'admin_revoke_moderator' target_user.email %}" class="reveal reveal-3" style="margin-bottom: var(--sp-5);">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--ghost">Cofnij uprawnienia moderatora</button>
+        </form>
+    {% endif %}
 
     <div class="user-layout reveal reveal-4">
         <div class="user-history">
