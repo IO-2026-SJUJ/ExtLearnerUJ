@@ -35,6 +35,25 @@
         font-size: var(--fs-base);
         margin-bottom: var(--sp-1);
     }
+    .notif__details { margin: var(--sp-1) 0 var(--sp-2); }
+    .notif__details summary {
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        color: var(--color-accent);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        user-select: none;
+    }
+    .notif__details[open] summary { margin-bottom: var(--sp-2); }
+    .notif__details p {
+        margin: 0;
+        padding: var(--sp-3) var(--sp-4);
+        background: var(--color-paper-dark);
+        border-left: 3px solid var(--color-accent);
+        font-size: var(--fs-sm);
+        white-space: pre-wrap;
+    }
     .notif__time {
         font-family: var(--font-mono);
         font-size: var(--fs-xs);
@@ -46,7 +65,15 @@
 {% block content %}
 <div class="container container--reading">
     <p class="eyebrow reveal reveal-1">§ Powiadomienia</p>
-    <h1 class="reveal reveal-2">Co się <em style="font-style: italic; color: var(--color-accent);">wydarzyło</em>.</h1>
+    <div class="reveal reveal-2" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--sp-4);">
+        <h1 style="margin: 0;">Co się <em style="font-style: italic; color: var(--color-accent);">wydarzyło</em>.</h1>
+        {% if has_unread %}
+            <form method="post" action="{% url 'notifications_mark_all_read' %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--ghost">✓ Odczytaj wszystkie</button>
+            </form>
+        {% endif %}
+    </div>
 
     {% if notifications %}
         <div class="reveal reveal-3" style="border: var(--border-hair); margin-top: var(--sp-6);">
@@ -56,6 +83,12 @@
                     <span class="notif__dot {% if n.isRead %}notif__dot--read{% endif %}"></span>
                     <div class="notif__body">
                         <p class="notif__msg">{{ n.message }}</p>
+                        {% if n.details %}
+                            <details class="notif__details">
+                                <summary>Pokaż szczegóły</summary>
+                                <p>{{ n.details }}</p>
+                            </details>
+                        {% endif %}
                         <span class="notif__time">{{ n.createdAt|date:"j F, H:i" }}</span>
                     </div>
                     {% if not n.isRead %}
