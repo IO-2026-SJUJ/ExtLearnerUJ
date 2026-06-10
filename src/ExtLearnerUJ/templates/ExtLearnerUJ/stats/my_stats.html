@@ -1,0 +1,81 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Moje statystyki — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="reveal reveal-2" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--sp-4);">
+        <div>
+            <p class="eyebrow reveal reveal-1">§ Statystyki nauki</p>
+            <h1 style="margin: 0;">Twoje <em style="font-style: italic; color: var(--color-accent);">postępy</em>.</h1>
+        </div>
+        <a href="{% url 'learning_report_pdf' %}" class="btn btn--accent">↓ Pobierz raport PDF</a>
+    </div>
+
+    <div class="grid reveal reveal-3" style="margin-top: var(--sp-6);">
+        <div class="card">
+            <div class="card__eyebrow">punkty rankingowe</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl); color: var(--color-accent);">{{ stats.points }}</h3>
+        </div>
+        <div class="card">
+            <div class="card__eyebrow">ukończone egzaminy</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl);">{{ stats.exams_completed }}</h3>
+        </div>
+        <div class="card">
+            <div class="card__eyebrow">diagnostyki</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl);">{{ stats.diagnostics_completed }}</h3>
+        </div>
+        <div class="card">
+            <div class="card__eyebrow">najlepszy wynik egz.</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl);">{{ stats.best_exam_score }}%</h3>
+        </div>
+        <div class="card">
+            <div class="card__eyebrow">średni wynik egz.</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl);">{{ stats.avg_exam_score }}%</h3>
+        </div>
+        <div class="card">
+            <div class="card__eyebrow">dodane materiały</div>
+            <h3 class="card__title" style="font-size: var(--fs-xl);">{{ stats.materials_added }}</h3>
+        </div>
+    </div>
+
+    {% if stats.last_area_scores %}
+        <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Ostatnia diagnostyka — obszary</h2>
+        <div class="area-chart reveal reveal-4">
+            {% for area, score in stats.last_area_scores.items %}
+                <div class="area-bar">
+                    <div class="area-bar__label">{{ area }}</div>
+                    <div class="area-bar__track">
+                        <div class="area-bar__fill {% if score < 50 %}area-bar__fill--weak{% endif %}"
+                             data-score="{% widthratio score 100 100 %}"
+                             style="width: {% widthratio score 100 100 %}%" aria-label="{{ area }}: {{ score }}%"></div>
+                    </div>
+                    <div class="area-bar__value">{{ score }}%</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if stats.exams %}
+        <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Historia egzaminów</h2>
+        <div class="reveal reveal-4" style="border: var(--border-soft);">
+            {% for e in stats.exams %}
+                <div style="display: flex; justify-content: space-between; padding: var(--sp-3) var(--sp-5); font-family: var(--font-mono); font-size: var(--fs-sm);
+                            {% if not forloop.last %}border-bottom: var(--border-hair);{% endif %}">
+                    <span>{% if e.submittedAt %}{{ e.submittedAt|date:"j M Y, H:i" }}{% endif %}</span>
+                    <span>{{ e.score }}% · +{{ e.pointsAwarded }} pkt</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div style="margin-top: var(--sp-7);">
+        <a href="{% url 'dashboard' %}" class="btn">← Wróć do panelu</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'js/area-chart.js' %}" defer></script>
+{% endblock %}

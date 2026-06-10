@@ -1,0 +1,53 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Ranking — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Ranking</p>
+    <h1 class="reveal reveal-2">
+        Najaktywniejsi <em style="font-style: italic; color: var(--color-accent);">użytkownicy</em>.
+    </h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Punkty zdobywasz za ukończone diagnostyki i symulacje egzaminu.
+        {% if my_position %}
+            Jesteś na pozycji <strong class="mono" style="color: var(--color-accent);">#{{ my_position }}</strong>
+            z wynikiem <strong class="mono">{{ my_points }} pkt</strong>.
+        {% else %}
+            Rozwiąż <a href="{% url 'exam_start' %}">symulację egzaminu</a>, żeby trafić do rankingu.
+        {% endif %}
+    </p>
+
+    {% if ranking %}
+        <div class="reveal reveal-4" style="border: var(--border-soft);">
+            {% for row in ranking %}
+                <div style="display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5);
+                            {% if not forloop.last %}border-bottom: var(--border-hair);{% endif %}
+                            {% if row.email == app_user.email %}background: var(--color-accent-soft);{% endif %}">
+                    <span class="mono" style="font-size: var(--fs-lg); font-weight: 700; min-width: 2.5ch;
+                          {% if row.position == 1 %}color: var(--color-accent);{% else %}color: var(--color-ink-muted);{% endif %}">
+                        {{ row.position }}
+                    </span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">{{ row.name }}{% if row.email == app_user.email %} <span class="mono" style="font-size: var(--fs-xs); color: var(--color-accent);">— to Ty</span>{% endif %}</div>
+                        <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                            {{ row.exams }} egz.
+                        </div>
+                    </div>
+                    <span class="mono" style="font-size: var(--fs-md); font-weight: 700;">{{ row.points }} pkt</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-4">
+            <div class="empty-state__icon">?</div>
+            <p>Nikt jeszcze nie zdobył punktów. Bądź pierwszy —
+                <a href="{% url 'exam_start' %}">rozwiąż symulację egzaminu</a>.</p>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: var(--sp-7);">
+        <a href="{% url 'dashboard' %}" class="btn">← Wróć do panelu</a>
+    </div>
+</div>
+{% endblock %}
