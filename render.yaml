@@ -22,9 +22,9 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true          # Render wygeneruje losowy sekret
       - key: DJANGO_ALLOWED_HOSTS
-        value: "olejnik.net,www.olejnik.net,.onrender.com"
+        value: "extlerneruj.pl,www.extlerneruj.pl,.onrender.com"
       - key: CSRF_TRUSTED_ORIGINS
-        value: "https://olejnik.net,https://www.olejnik.net"
+        value: "https://extlerneruj.pl,https://www.extlerneruj.pl"
       - key: DATABASE_URL
         fromDatabase:
           name: extlearneruj-db
