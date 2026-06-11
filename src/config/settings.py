@@ -169,8 +169,14 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = _bool('EMAIL_USE_TLS', True)
 EMAIL_USE_SSL = _bool('EMAIL_USE_SSL', False)
 
+# Resend — wysyłka maili przez HTTPS (działa tam, gdzie SMTP jest zablokowany,
+# np. darmowy plan Render). Gdy ustawisz RESEND_API_KEY, ma pierwszeństwo.
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+
 if os.getenv('EMAIL_BACKEND'):
     EMAIL_BACKEND = os.getenv('EMAIL_BACKEND')
+elif RESEND_API_KEY:
+    EMAIL_BACKEND = 'ExtLearnerUJ.email_backends.ResendEmailBackend'
 elif EMAIL_HOST:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
