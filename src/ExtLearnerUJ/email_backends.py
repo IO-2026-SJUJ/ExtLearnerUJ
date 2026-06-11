@@ -74,6 +74,10 @@ class ResendEmailBackend(BaseEmailBackend):
             headers={
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                # Cloudflare (przed API Resend) blokuje żądania bez normalnego
+                # User-Agent (błąd 1010). Podajemy więc zwykły UA.
+                'User-Agent': 'ExtLearnerUJ/1.0 (+https://extlerneruj.pl)',
             },
         )
         try:
