@@ -12,7 +12,7 @@ services:
     region: frankfurt
     plan: free
     rootDir: src
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py seed_admin && python manage.py seed_diagnostic && python manage.py seed_materials && python manage.py seed_packages && python manage.py seed_exam"
     startCommand: "gunicorn config.wsgi:application"
     envVars:
       - key: DJANGO_DEBUG
