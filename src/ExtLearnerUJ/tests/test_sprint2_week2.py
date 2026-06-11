@@ -76,7 +76,7 @@ class WorkSubmissionTests(TestCase):
         response = self.client.get(reverse('work_new'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Podstawowy')
-        self.assertContains(response, '15.0 zł')
+        self.assertContains(response, '15,0 zł')
 
     def test_submit_work_creates_pending_payment(self):
         response = self.client.post(reverse('work_new'), {
@@ -110,10 +110,12 @@ class WorkSubmissionTests(TestCase):
         self.assertEqual(work.attachments.count(), 1)
 
     def test_requires_student_role(self):
+        # Sprint 3: moderatorzy i admini też mają funkcje uczniowskie
+        # (m.in. wysyłanie prac do sprawdzenia). Dawniej tu było 403.
         mod = _verified_moderator('ineligible@uj.edu.pl')
         client = _login_client(mod)
         response = client.get(reverse('work_new'))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
 
 
 class PaymentFlowTests(TestCase):
@@ -133,19 +135,21 @@ class PaymentFlowTests(TestCase):
     def test_payment_page_shows_package_price(self):
         response = self.client.get(reverse('work_payment', args=[self.work.id]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '15.0 zł')
+        self.assertContains(response, '15,0 zł')
 
     def test_payment_processes_and_transitions_work_to_paid(self):
         response = self.client.post(
             reverse('work_payment', args=[self.work.id]),
-            {'method': 'BLIK'},
+            {'method': 'DIRECT'},
         )
         self.assertEqual(response.status_code, 302)
         self.work.refresh_from_db()
         self.assertEqual(self.work.status, Work.STATUS_PAID)
         self.assertEqual(PaymentTransaction.objects.count(), 1)
         tx = PaymentTransaction.objects.first()
-        self.assertEqual(tx.status, PaymentTransaction.STATUS_COMPLETED)
+        # Rozliczenie indywidualne — płatność poza platformą, więc transakcja
+        # dokumentuje jedynie wybór metody (bez przetwarzania przez bramkę).
+        self.assertEqual(tx.method, PaymentTransaction.METHOD_DIRECT)
 
     def test_cant_pay_for_others_work(self):
         other = _verified_student('ktos-inny@uj.edu.pl')
@@ -469,7 +473,7 @@ class AdminUserManagementTests(TestCase):
     def test_block_notifies_user(self):
         self.client.post(
             reverse('admin_user_detail', args=[self.target.email]),
-            {'duration': '7', 'reason': 'test'},
+            {'duration': '7', 'reason': 'Powtarzający się spam i obraźliwe treści.'},
         )
         self.assertTrue(
             Notification.objects.filter(userId=self.target.email).exists()
