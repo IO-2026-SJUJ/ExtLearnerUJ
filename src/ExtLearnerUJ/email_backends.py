@@ -9,6 +9,7 @@ nie wymaga zmian w miejscach wysyłki.
 Bez zewnętrznych zależności — korzysta z biblioteki standardowej (urllib).
 """
 import json
+import sys
 import urllib.request
 import urllib.error
 
@@ -27,6 +28,8 @@ class ResendEmailBackend(BaseEmailBackend):
         if not email_messages:
             return 0
         if not self.api_key:
+            print('RESEND ERROR: RESEND_API_KEY nie jest ustawiony.',
+                  file=sys.stderr, flush=True)
             if not self.fail_silently:
                 raise ValueError('RESEND_API_KEY nie jest ustawiony.')
             return 0
@@ -36,7 +39,9 @@ class ResendEmailBackend(BaseEmailBackend):
             try:
                 self._send_single(message)
                 sent += 1
-            except Exception:
+            except Exception as exc:
+                # Wypisz dokładny powód do logów (widoczne w Render → Logs).
+                print(f'RESEND ERROR: {exc}', file=sys.stderr, flush=True)
                 if not self.fail_silently:
                     raise
         return sent
