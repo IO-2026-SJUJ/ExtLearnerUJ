@@ -1,0 +1,53 @@
+ee908fa Sprint 3: testy automatyczne
+958f57b Sprint 3: komendy zarzadzajace i dane startowe (seedy, loadtest)
+be42344 Sprint 3: UI powiadomien i prac pisemnych (rozliczenie indywidualne)
+1de754b Sprint 3: panel administratora (zgloszenia, role, blokady)
+c55f133 Sprint 3: panel moderatora (kolejki, edytor oceny, zarobki, wniosek)
+98b46b2 Sprint 3: UI rankingu, statystyk i zgloszen materialow
+75f5113 Sprint 3: UI diagnostyki i symulacji egzaminu
+a274d76 Sprint 3: ekrany logowania, rejestracji i resetu hasla
+6710815 Sprint 3: zasoby statyczne (JS egzaminu, wykresy, edytor zaznaczen)
+1b82e5f Sprint 3: panel glowny, landing i partial formularza
+52077c7 Sprint 3: widoki, routing i logika sesji
+78a181d Sprint 3: warstwa serwisow (rekomendacje, ranking, statystyki, PDF)
+d60920c Sprint 3: modele danych i migracje (egzamin, ranking, oceny, RODO)
+eba3baa fix: rozwiazanie konfliktow merge w szablonach po Sprincie 2
+d231a45 Add files via upload
+fe6f6e9 Delete src/.env.example
+7d3cf1e Delete src/SPRINT2-WEEK2-CHANGES.md
+f07d920 Delete src/requirements.txt
+9cda438 Delete src/SPRINT2-CHANGES.md
+d0ac1ec Delete src/README.md
+2508d22 Merge branch 'sprint-2'
+428d8ae sprint 2 oba tygodnie
+6521551 ss z issues pomiedzy 1 a 2 sprintem
+469f1d6 przeniesiony gitignore
+087b2fc gitignore
+53c3b96 fix(templates): move templates to templates/ExtLearnerUJ/ namespace
+208ffcb Merge pull request #19 from IO-2026-SJUJ/tech
+fe6642d poprawki - usuwanie pycache
+d5afdba infrastruktura
+f312ef6 Merge pull request #18 from IO-2026-SJUJ/testy
+b96e239 poprawki i testy
+1e02e40 Merge pull request #17 from IO-2026-SJUJ/managment_comands
+a4ce8ea seed_diagnostic, seed_materials and cleanup_sessions
+f71e622 Merge pull request #16 from IO-2026-SJUJ/front
+567f9cc Merge branch 'main' into front
+46704a3 templates, CSS design
+a60413d vievs, urls
+ab95526 forms, decorators, middleware and context processor
+869ab4f Merge pull request #15 from IO-2026-SJUJ/ModelsLogic
+3cb7c6f grading service
+3177493 logika user/session/material/test + migracja
+e3f8c0f drobne naprawy
+1f0f875 usuniencie db.sqlite3 z repo (powinien być lokalny)
+b99ebf9 Merge pull request #14 from IO-2026-SJUJ/sprint1-materials
+87d06bf pyc usuniecie
+9d1a7e3 Merge branch 'main' of https://github.com/IO-2026-SJUJ/ExtLearnerUJ into sprint1-materials
+eca5312 usuniecie pyc
+94145ee Cleanup: usuniecie plikow pycache z repo
+ff1644c Merge pull request #13 from IO-2026-SJUJ/sprint1-sqlite-userChanges
+d2f1f99 material, addfile, attachment zaimplementowane
+db320e3 zmiany w tworzerniu materialow
+488f56a implementacja weryfikacji emaila
+6567813 [AUTH] Implementacja logiki rejestracji i logowania wykorzystanie sqlite, male poprawki w testach, implementacja rejestracji
