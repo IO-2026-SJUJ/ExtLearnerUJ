@@ -75,6 +75,10 @@
             <div class="metric__label">Prace w trakcie</div>
             <div class="metric__value">{{ stats.works_pending }}</div>
         </div>
+        <div class="metric {% if stats.applications_pending > 0 %}metric--alert{% endif %}">
+            <div class="metric__label">Wnioski moderatorskie</div>
+            <div class="metric__value">{{ stats.applications_pending }}</div>
+        </div>
     </div>
 
     <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Szybkie akcje</h2>
@@ -90,6 +94,9 @@
         </a>
         <a href="{% url 'moderator_works_queue' %}" class="btn btn--lg">
             ✍ Prace do sprawdzenia
+        </a>
+        <a href="{% url 'admin_applications' %}" class="btn btn--lg">
+            🎓 Wnioski moderatorskie ({{ stats.applications_pending }})
         </a>
     </div>
 </div>

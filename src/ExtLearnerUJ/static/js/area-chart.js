@@ -9,7 +9,8 @@
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     bars.forEach((bar, i) => {
-        const target = bar.dataset.score || '0';
+        const target = (bar.dataset.score || '0').replace(',', '.');
+        bar.style.width = '0%';  // start animacji od zera (szablon ustawia stan końcowy)
         if (reduce) {
             bar.style.width = target + '%';
         } else {

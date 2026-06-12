@@ -22,6 +22,22 @@
         transition: background 0.1s ease;
     }
     .method:hover { background: var(--color-paper-dark); }
+    .method--disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background: var(--color-paper-dark);
+    }
+    .method--disabled:hover { background: var(--color-paper-dark); }
+    .method__badge {
+        margin-left: auto;
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-ink-muted);
+        border: 1px solid var(--color-ink-muted);
+        padding: 2px 8px;
+    }
     .method:has(input:checked) {
         background: var(--color-accent-soft);
         border-color: var(--color-accent);
@@ -50,8 +66,10 @@
     <h1 class="reveal reveal-2">Podsumowanie zamówienia</h1>
 
     <div class="mock-notice reveal reveal-3">
-        <strong>Tryb demo</strong> — transakcja nie jest rzeczywista. W produkcji
-        ten ekran przekieruje do bramki Przelewy24 / Stripe.
+        Płatności online są obecnie niedostępne. Aktywne jest
+        <strong>rozliczenie indywidualne</strong> — gdy sprawdzający zarezerwuje
+        Twoją pracę, dostaniesz powiadomienie z jego adresem e-mail i ustalicie
+        płatność bezpośrednio między sobą.
     </div>
 
     <div class="reveal reveal-4" style="border: 2px solid var(--color-ink); padding: var(--sp-5); margin-bottom: var(--sp-6);">
@@ -80,27 +98,36 @@
     <form method="post" class="reveal reveal-4">
         {% csrf_token %}
 
-        <h3 style="font-size: var(--fs-md); margin-bottom: var(--sp-3);">Metoda płatności</h3>
+        <h3 style="font-size: var(--fs-md); margin-bottom: var(--sp-3);">Metoda rozliczenia</h3>
         <div class="methods">
-            <label class="method">
-                <input type="radio" name="method" value="BLIK" checked>
+            <div class="method method--disabled" aria-disabled="true" title="Metoda obecnie niedostępna">
                 <span class="method__icon">BLIK</span>
                 <span>Szybki kod 6-cyfrowy z aplikacji bankowej</span>
-            </label>
-            <label class="method">
-                <input type="radio" name="method" value="CARD">
+                <span class="method__badge">niedostępne</span>
+            </div>
+            <div class="method method--disabled" aria-disabled="true" title="Metoda obecnie niedostępna">
                 <span class="method__icon">💳</span>
                 <span>Karta płatnicza (Visa / Mastercard)</span>
-            </label>
-            <label class="method">
-                <input type="radio" name="method" value="TRANSFER">
+                <span class="method__badge">niedostępne</span>
+            </div>
+            <div class="method method--disabled" aria-disabled="true" title="Metoda obecnie niedostępna">
                 <span class="method__icon">🏦</span>
                 <span>Szybki przelew online</span>
+                <span class="method__badge">niedostępne</span>
+            </div>
+            <label class="method">
+                <input type="radio" name="method" value="DIRECT" checked>
+                <span class="method__icon">🤝</span>
+                <span>
+                    <strong>Rozliczenie indywidualne</strong> — płatność ustalasz
+                    bezpośrednio ze sprawdzającym (otrzyma Twój e-mail po
+                    rezerwacji pracy)
+                </span>
             </label>
         </div>
 
         <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
-            <button type="submit" class="btn btn--accent btn--lg">Zapłać {{ package.price }} zł</button>
+            <button type="submit" class="btn btn--accent btn--lg">Zgłoś pracę do sprawdzenia</button>
             <a href="{% url 'work_new' %}" class="btn btn--ghost btn--lg">← Wróć</a>
         </div>
     </form>

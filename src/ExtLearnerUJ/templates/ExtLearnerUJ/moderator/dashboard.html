@@ -29,6 +29,10 @@
             <a href="{% url 'moderator_materials_queue' %}" class="btn btn--accent">
                 Otwórz kolejkę →
             </a>
+            <a href="{% url 'moderator_materials_queue' %}" class="btn"
+               style="margin-left: var(--sp-3); background: var(--color-paper); color: var(--color-ink); border-color: var(--color-paper);">
+                Weryfikacja materiałów
+            </a>
         </div>
 
         <div class="panel">
@@ -43,9 +47,7 @@
                     zweryfikowanych
                 </span>
             </div>
-            <p style="font-size: var(--fs-sm); color: var(--color-ink-muted); margin: 0;">
-                W Sprincie 3 pojawi się tu ranking moderatorów i szczegółowe statystyki.
-            </p>
+            <a href="{% url 'moderator_earnings' %}" class="btn">Zarobki →</a>
         </div>
     </div>
 
@@ -55,29 +57,29 @@
         </div>
 
         <div class="grid">
-            <div class="card">
-                <div class="card__eyebrow">Sprint 2</div>
-                <h3 class="card__title">Weryfikacja materiałów</h3>
+            <a href="{% url 'moderator_materials_queue' %}" class="card" style="text-decoration: none; color: inherit;">
+                <div class="card__eyebrow">Materiały</div>
+                <h3 class="card__title">Weryfikacja materiałów →</h3>
                 <p style="font-size: var(--fs-sm); color: var(--color-ink-soft);">
                     Otwieraj kolejkę, czytaj materiał, wybieraj: zatwierdź / odrzuć / do poprawy.
                     System sam powiadomi autora.
                 </p>
-            </div>
-            <div class="card" style="opacity: 0.6;">
-                <div class="card__eyebrow">Sprint 2 — w trakcie</div>
-                <h3 class="card__title">Sprawdzanie prac pisemnych</h3>
-                <p style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
-                    Pojawi się w 2. tygodniu Sprintu 2. Edytor z kolorowymi zaznaczeniami
-                    i komentarzami per fragment.
+            </a>
+            <a href="{% url 'moderator_works_queue' %}" class="card" style="text-decoration: none; color: inherit;">
+                <div class="card__eyebrow">Prace pisemne</div>
+                <h3 class="card__title">Prace do oceny →</h3>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-soft);">
+                    Rezerwuj prace i oceniaj w edytorze z kolorowymi zaznaczeniami błędów
+                    oraz komentarzami.
                 </p>
-            </div>
-            <div class="card" style="opacity: 0.6;">
-                <div class="card__eyebrow">Sprint 3</div>
-                <h3 class="card__title">Zarobki i statystyki</h3>
-                <p style="font-size: var(--fs-sm); color: var(--color-ink-muted);">
-                    Saldo za sprawdzone prace, historia wypłat, średnia ocena od studentów.
+            </a>
+            <a href="{% url 'moderator_earnings' %}" class="card" style="text-decoration: none; color: inherit;">
+                <div class="card__eyebrow">Finanse</div>
+                <h3 class="card__title">Zarobki →</h3>
+                <p style="font-size: var(--fs-sm); color: var(--color-ink-soft);">
+                    Statystyki zarobków za sprawdzone prace.
                 </p>
-            </div>
+            </a>
         </div>
     </section>
 </div>

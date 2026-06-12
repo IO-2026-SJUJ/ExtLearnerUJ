@@ -1,0 +1,48 @@
+# Blueprint Render dla ExtLearnerUJ.
+# Tworzy usługę web (Django + gunicorn) oraz zarządzaną bazę PostgreSQL
+# w regionie Frankfurt (UE — wymóg RODO O-01).
+#
+# Sekrety (hasło do poczty) NIE są tu zapisane — uzupełnia się je w panelu
+# Render po pierwszym wdrożeniu (pola "sync: false").
+
+services:
+  - type: web
+    name: extlearneruj
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: src
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py seed_admin && python manage.py seed_diagnostic && python manage.py seed_materials && python manage.py seed_packages && python manage.py seed_exam"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: SECURE_COOKIES
+        value: "True"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true          # Render wygeneruje losowy sekret
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "extlerneruj.pl,www.extlerneruj.pl,.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://extlerneruj.pl,https://www.extlerneruj.pl"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: extlearneruj-db
+          property: connectionString
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+
+databases:
+  - name: extlearneruj-db
+    region: frankfurt
+    plan: free

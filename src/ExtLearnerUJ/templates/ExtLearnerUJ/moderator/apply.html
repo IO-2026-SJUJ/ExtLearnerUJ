@@ -1,0 +1,74 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Zostań moderatorem — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Wniosek o rolę moderatora</p>
+    <h1 class="reveal reveal-2">
+        Dołącz do <em style="font-style: italic; color: var(--color-accent);">ekspertów</em>.
+    </h1>
+
+    {% if pending %}
+        <div class="reveal reveal-3" style="padding: var(--sp-5); background: var(--color-warning-bg); border-left: 3px solid var(--color-warning); margin-top: var(--sp-5);">
+            <p class="eyebrow" style="margin: 0 0 var(--sp-2);">Status: oczekuje</p>
+            <p style="margin: 0;">
+                Twój wniosek z {{ pending.createdAt|date:"j F Y" }} czeka na rozpatrzenie
+                przez administratora. Powiadomimy Cię o decyzji.
+            </p>
+        </div>
+    {% elif last_application and last_application.status == 'REJECTED' %}
+        <div class="reveal reveal-3" style="padding: var(--sp-5); background: var(--color-paper-dark); border-left: 3px solid var(--color-ink-muted); margin: var(--sp-5) 0;">
+            <p class="eyebrow" style="margin: 0 0 var(--sp-2);">Poprzedni wniosek odrzucony</p>
+            <p style="margin: 0;">{{ last_application.decisionComment|default:"Brak komentarza." }}</p>
+            <p style="margin: var(--sp-3) 0 0; color: var(--color-ink-muted); font-size: var(--fs-sm);">
+                Możesz złożyć nowy wniosek poniżej.
+            </p>
+        </div>
+    {% endif %}
+
+    {% if not pending %}
+        <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin: var(--sp-4) 0 var(--sp-6);">
+            Moderatorzy weryfikują materiały i sprawdzają prace pisemne (płatnie).
+            Opisz swoje kompetencje, dołącz certyfikat (jeśli masz) i rozwiąż
+            krótki test kwalifikacyjny — wynik poniżej {{ pass_threshold|floatformat:0 }}%
+            oznacza automatyczne odrzucenie wniosku.
+        </p>
+
+        <form method="post" enctype="multipart/form-data" class="form reveal reveal-4" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                {% include 'ExtLearnerUJ/_form_field.html' with field=field %}
+            {% endfor %}
+
+            <h2 style="font-size: var(--fs-lg); margin: var(--sp-6) 0 var(--sp-2);">
+                Test kwalifikacyjny <span class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">(próg: {{ pass_threshold|floatformat:0 }}%)</span>
+            </h2>
+            <div style="border: var(--border-hair);">
+                {% for q in test_questions %}
+                    <fieldset style="border: 0; margin: 0; padding: var(--sp-4) var(--sp-5); {% if not forloop.last %}border-bottom: var(--border-soft);{% endif %}">
+                        <legend style="font-weight: 600; padding: 0; margin-bottom: var(--sp-2);">
+                            {{ forloop.counter }}. {{ q.text }}
+                        </legend>
+                        {% for opt in q.options %}
+                            <label style="display: flex; align-items: baseline; gap: var(--sp-2); padding: 4px 0; cursor: pointer; font-size: var(--fs-sm);">
+                                <input type="radio" name="test_{{ q.id }}" value="{{ forloop.counter0 }}" required>
+                                <span>{{ opt }}</span>
+                            </label>
+                        {% endfor %}
+                    </fieldset>
+                {% endfor %}
+            </div>
+
+            <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-4);">
+                <button type="submit" class="btn btn--accent btn--lg">Wyślij wniosek</button>
+                <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">Anuluj</a>
+            </div>
+        </form>
+    {% else %}
+        <div style="margin-top: var(--sp-6);">
+            <a href="{% url 'dashboard' %}" class="btn">← Wróć do panelu</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

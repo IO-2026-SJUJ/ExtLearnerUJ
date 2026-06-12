@@ -1,0 +1,40 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Wnioski moderatorskie — Administracja{% endblock %}
+
+{% block content %}
+<div class="container">
+    <p class="eyebrow reveal reveal-1">§ Administracja</p>
+    <h1 class="reveal reveal-2">Wnioski o rolę <em style="font-style: italic; color: var(--color-accent);">moderatora</em>.</h1>
+
+    {% if rows %}
+        <div class="reveal reveal-3" style="border: var(--border-soft); margin-top: var(--sp-5);">
+            {% for row in rows %}
+                <a href="{% url 'admin_review_application' row.application.id %}"
+                   style="display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); text-decoration: none; color: inherit;
+                          {% if not forloop.last %}border-bottom: var(--border-hair);{% endif %}">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">{{ row.user.name|default:row.application.candidateId }}</div>
+                        <div class="mono" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+                            {{ row.application.candidateId }} · {{ row.application.createdAt|date:"j M Y" }}{% if row.application.testScore is not None %} · test: <strong>{{ row.application.testScore|floatformat:0 }}%</strong>{% endif %}
+                        </div>
+                    </div>
+                    {% if row.application.certificatePath %}
+                        <span class="chip chip--verified" style="padding: 1px 6px; font-size: 0.7rem;">📎 certyfikat</span>
+                    {% endif %}
+                    <span class="mono" style="font-size: var(--fs-xs);">rozpatrz →</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state reveal reveal-3">
+            <div class="empty-state__icon">✓</div>
+            <p>Brak oczekujących wniosków.</p>
+        </div>
+    {% endif %}
+
+    <div style="margin-top: var(--sp-7);">
+        <a href="{% url 'admin_dashboard' %}" class="btn">← Dashboard</a>
+    </div>
+</div>
+{% endblock %}

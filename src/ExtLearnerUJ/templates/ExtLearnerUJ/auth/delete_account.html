@@ -1,0 +1,35 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Usuń konto — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Ustawienia konta</p>
+    <h1 class="reveal reveal-2">Usuń <em style="font-style: italic; color: var(--color-accent);">konto</em>.</h1>
+
+    <div class="message message--error reveal reveal-3" style="margin-bottom: var(--sp-5);">
+        <strong>Uwaga:</strong> ta operacja jest nieodwracalna. Usuniemy trwale Twoje
+        konto oraz wszystkie powiązane dane: wyniki diagnostyki i egzaminów, statystyki,
+        dodane materiały, przesłane prace, głosy, powiadomienia i historię. Nie da się
+        tego cofnąć.
+    </div>
+
+    <form method="post" class="form reveal reveal-4" novalidate>
+        {% csrf_token %}
+        <div class="form-field">
+            <label for="id_delete_password">Potwierdź swoim hasłem</label>
+            <input type="password" name="password" id="id_delete_password"
+                   class="input" autocomplete="current-password" required
+                   placeholder="Twoje aktualne hasło">
+        </div>
+        <button type="submit" class="btn btn--accent btn--lg btn--block"
+                onclick="return confirm('Na pewno trwale usunąć konto i wszystkie dane? Tej operacji nie można cofnąć.');">
+            Trwale usuń moje konto
+        </button>
+    </form>
+
+    <p style="margin-top: var(--sp-5); font-size: var(--fs-sm);">
+        <a href="{% url 'dashboard' %}">← Anuluj i wróć do panelu</a>
+    </p>
+</div>
+{% endblock %}

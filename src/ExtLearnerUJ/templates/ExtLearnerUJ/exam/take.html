@@ -1,0 +1,98 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Egzamin — w trakcie{% endblock %}
+
+{% block extra_head %}
+<style>
+    .exam-bar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-4);
+        padding: var(--sp-3) var(--sp-5);
+        background: var(--color-paper);
+        border-bottom: var(--border-soft);
+        margin-bottom: var(--sp-5);
+        flex-wrap: wrap;
+    }
+    .exam-timer {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xl);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.05em;
+    }
+    .exam-timer--warn { color: var(--color-warning); }
+    .exam-timer--danger { color: var(--color-accent); animation: exam-pulse 1s infinite; }
+    @keyframes exam-pulse { 50% { opacity: 0.45; } }
+    @media (prefers-reduced-motion: reduce) {
+        .exam-timer--danger { animation: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <div class="exam-bar">
+        <span class="eyebrow" style="margin: 0;">§ {{ test.title }}</span>
+        <span class="exam-timer" id="exam-timer" aria-live="off">--:--</span>
+        <span class="mono" id="exam-status" style="font-size: var(--fs-xs); color: var(--color-ink-muted);">
+            Odpowiedzi zapisują się automatycznie
+        </span>
+    </div>
+
+    <form id="exam-form"
+          method="post"
+          data-autosave-url="{% url 'exam_autosave' attempt.id %}"
+          data-submit-url="{% url 'exam_submit' attempt.id %}"
+          data-csrf-token="{{ csrf_token }}"
+          data-seconds-left="{{ seconds_left }}">
+        {% csrf_token %}
+
+        {% for question in questions %}
+            <div class="question">
+                <div class="question__num">
+                    Pytanie {{ forloop.counter }} / {{ questions|length }}
+                    <span class="question__area">· {{ question.area|default:"general" }}</span>
+                </div>
+                <div class="question__text">{{ question.text }}</div>
+                <div class="question__options">
+                    {% for opt in question.options %}
+                        <label class="question__option">
+                            <input type="radio" name="q_{{ question.id }}" value="{{ opt }}">
+                            <span>{{ opt }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: var(--sp-4); padding: var(--sp-6) 0; margin-top: var(--sp-5); border-top: var(--border-hair); flex-wrap: wrap;">
+            <button type="submit" class="btn btn--accent btn--lg">Zakończ egzamin</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'js/exam.js' %}" defer></script>
+    {% if saved_answers %}
+    <script>
+        // Przywróć zautozapisane odpowiedzi po odświeżeniu.
+        (function () {
+            try {
+                var saved = JSON.parse('{{ saved_answers|escapejs }}');
+                Object.keys(saved).forEach(function (qid) {
+                    var sel = 'input[name="q_' + qid + '"][value="' + saved[qid].replace(/"/g, '\\"') + '"]';
+                    var el = document.querySelector(sel);
+                    if (el) el.checked = true;
+                });
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+
+{% block title %}Symulacja egzaminu — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--narrow">
+    <p class="eyebrow reveal reveal-1">§ Symulacja egzaminu</p>
+    <h1 class="reveal reveal-2">
+        Sprawdź się <em style="font-style: italic; color: var(--color-accent);">na czas</em>.
+    </h1>
+    <p class="reveal reveal-3" style="color: var(--color-ink-muted); margin-bottom: var(--sp-6);">
+        Symulacja egzaminu eksternistycznego B2+ w warunkach zbliżonych do prawdziwych:
+        <strong>twardy limit czasu</strong>. Gdy zegar dojdzie do 0:00, system
+        automatycznie zablokuje odpowiedzi i policzy wynik.
+    </p>
+
+    <div class="panel reveal reveal-4" style="margin-bottom: var(--sp-5);">
+        <div class="panel__header">
+            <h2>{{ test.title }}</h2>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--sp-3); font-family: var(--font-mono); font-size: var(--fs-sm);">
+            <li>→ Pytań: <strong>{{ question_count }}</strong></li>
+            <li>→ Limit czasu: <strong>{{ duration }} min</strong></li>
+            <li>→ Punkty do rankingu: <strong>= Twój wynik %</strong></li>
+            <li style="color: var(--color-ink-muted);">→ Odpowiedzi zapisują się automatycznie</li>
+        </ul>
+    </div>
+
+    {% if ongoing %}
+        <div style="padding: var(--sp-4); background: var(--color-warning-bg); border-left: 3px solid var(--color-warning); margin-bottom: var(--sp-5); font-size: var(--fs-sm);">
+            Masz niezakończone podejście. Możesz je kontynuować — czas leci dalej.
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--accent btn--lg">Wróć do egzaminu →</button>
+            <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">Później</a>
+        </form>
+    {% else %}
+        <form method="post" class="reveal reveal-4">
+            {% csrf_token %}
+            <div style="display: flex; gap: var(--sp-3); flex-wrap: wrap;">
+                <button type="submit" class="btn btn--accent btn--lg">Rozpocznij egzamin</button>
+                <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">Wróć do panelu</a>
+            </div>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

@@ -21,7 +21,10 @@
         <button type="submit" class="btn btn--accent btn--lg btn--block">Zaloguj</button>
     </form>
 
-    <p style="margin-top: var(--sp-6); font-size: var(--fs-sm); color: var(--color-ink-muted);">
+    <p style="margin-top: var(--sp-4); font-size: var(--fs-sm);">
+        <a href="{% url 'forgot_password' %}">Nie pamiętam hasła</a>
+    </p>
+    <p style="margin-top: var(--sp-3); font-size: var(--fs-sm); color: var(--color-ink-muted);">
         Nie masz jeszcze konta? <a href="{% url 'register' %}">Zarejestruj się</a>.
     </p>
 </div>

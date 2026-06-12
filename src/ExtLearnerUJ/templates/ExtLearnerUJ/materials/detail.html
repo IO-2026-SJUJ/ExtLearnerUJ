@@ -20,13 +20,9 @@
         &nbsp;·&nbsp;
         Dodano: {{ material.createdAt|date:"j F Y" }}
         &nbsp;·&nbsp;
-<<<<<<< HEAD
-        Priorytet: {{ material.priority }}
-=======
         Priorytet: <strong id="priority-value" class="mono" style="color: var(--color-accent);">{{ material.priority }}</strong>
         &nbsp;·&nbsp;
         Głosów: <strong id="vote-count" class="mono">{{ vote_count }}</strong>
->>>>>>> sprint-2
     </div>
 
     <article class="reveal reveal-4" style="font-size: var(--fs-md); line-height: 1.7;">
@@ -39,11 +35,7 @@
             <ul style="list-style: none; padding: 0;">
                 {% for att in material.attachments.all %}
                     <li class="mono" style="padding: var(--sp-2) 0;">
-<<<<<<< HEAD
-                        → {{ att.fileName }}
-=======
                         → <a href="{{ MEDIA_URL }}{{ att.filePath }}" target="_blank" rel="noopener">{{ att.fileName }}</a>
->>>>>>> sprint-2
                         <span style="color: var(--color-ink-muted); font-size: var(--fs-xs);">
                             ({{ att.sizeBytes|filesizeformat }})
                         </span>
@@ -53,17 +45,7 @@
         </section>
     {% endif %}
 
-<<<<<<< HEAD
-    <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-soft);">
-        <a href="{% url 'materials_list' %}" class="btn">← Powrót do listy</a>
-        <span class="mono" style="margin-left: var(--sp-5); color: var(--color-ink-muted); font-size: var(--fs-xs);">
-            W Sprincie 2: głosowanie, ulubione, zgłaszanie błędów.
-        </span>
-    </div>
-</div>
-{% endblock %}
-=======
-    {# Akcje Sprintu 2: głosowanie + zgłoszenie + powrót #}
+    {# Akcje: głosowanie + zgłoszenie + powrót #}
     <div style="margin-top: var(--sp-7); padding-top: var(--sp-5); border-top: var(--border-hair); display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center;">
         <a href="{% url 'materials_list' %}" class="btn">← Powrót</a>
 
@@ -82,9 +64,15 @@
             ⚠ Zgłoś błąd / spam
         </a>
 
-        <span class="mono" style="margin-left: auto; color: var(--color-ink-muted); font-size: var(--fs-xs);">
-            Ulubione — Sprint 3
-        </span>
+        {% if can_delete %}
+            <form method="post" action="{% url 'material_delete' material.id %}" style="margin:0"
+                  onsubmit="return confirm('Na pewno usunąć ten materiał? Tej operacji nie można cofnąć.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--ghost" style="color: var(--color-accent);">
+                    🗑 {% if is_owner %}Usuń mój materiał{% else %}Usuń (admin){% endif %}
+                </button>
+            </form>
+        {% endif %}
     </div>
 
     {# Ukryty CSRF token dla AJAX-a #}
@@ -96,4 +84,3 @@
 {% load static %}
 <script src="{% static 'js/material-vote.js' %}" defer></script>
 {% endblock %}
->>>>>>> sprint-2

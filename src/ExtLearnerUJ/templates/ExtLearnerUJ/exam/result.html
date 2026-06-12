@@ -1,0 +1,54 @@
+{% extends 'ExtLearnerUJ/base.html' %}
+{% load static %}
+
+{% block title %}Wynik egzaminu — ExtLearnerUJ{% endblock %}
+
+{% block content %}
+<div class="container container--reading">
+    <p class="eyebrow reveal reveal-1">§ Wynik symulacji egzaminu</p>
+    <h1 class="reveal reveal-2">
+        Egzamin <em style="font-style: italic; color: var(--color-accent);">zakończony</em>.
+    </h1>
+
+    <div class="score-hero reveal reveal-3">
+        <div class="score-hero__big">{{ attempt.score }}<span style="font-size: 0.4em; color: var(--color-ink-muted);">%</span></div>
+        <div class="score-hero__label">
+            Wynik ogólny ·
+            {% if attempt.submittedAt %}{{ attempt.submittedAt|date:"j F Y, H:i" }}{% endif %}
+        </div>
+    </div>
+
+    <div class="reveal reveal-3" style="display: flex; gap: var(--sp-5); flex-wrap: wrap; margin-top: var(--sp-5); font-family: var(--font-mono); font-size: var(--fs-sm);">
+        <span>+{{ attempt.pointsAwarded }} pkt do rankingu</span>
+        {% if position %}<span>· Twoja pozycja: <strong style="color: var(--color-accent);">#{{ position }}</strong></span>{% endif %}
+    </div>
+
+    {% if attempt.areaScores %}
+        <h2 class="reveal reveal-4" style="margin-top: var(--sp-7);">Wyniki per obszar</h2>
+        <div class="area-chart reveal reveal-4">
+            {% for area, score in attempt.areaScores.items %}
+                <div class="area-bar">
+                    <div class="area-bar__label">{{ area }}</div>
+                    <div class="area-bar__track">
+                        <div class="area-bar__fill {% if score < 50 %}area-bar__fill--weak{% endif %}"
+                             data-score="{% widthratio score 100 100 %}"
+                             style="width: {% widthratio score 100 100 %}%"
+                             aria-label="{{ area }}: {{ score }}%"></div>
+                    </div>
+                    <div class="area-bar__value">{{ score }}%</div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div style="display: flex; gap: var(--sp-4); margin-top: var(--sp-7); flex-wrap: wrap;">
+        <a href="{% url 'exam_start' %}" class="btn btn--accent btn--lg">Spróbuj ponownie</a>
+        <a href="{% url 'ranking' %}" class="btn btn--lg">Zobacz ranking</a>
+        <a href="{% url 'dashboard' %}" class="btn btn--ghost btn--lg">Panel</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <script src="{% static 'js/area-chart.js' %}" defer></script>
+{% endblock %}
